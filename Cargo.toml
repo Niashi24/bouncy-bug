@@ -15,7 +15,7 @@ crate-type = [
 playdate = "0.2.4"
 portable-atomic-util = "0.2.4"
 bevy_ecs = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy_reflect", "portable-atomic"] }
-bevy_app = { git = "https://github.com/bevyengine/bevy", default-features = false }
+bevy_app = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy_reflect", "portable-atomic"] }
 bevy_playdate = { git = "https://github.com/Niashi24/bevy_playdate.git", branch = "indev" }
 
 # Playdate Package Info
