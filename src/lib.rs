@@ -15,6 +15,7 @@ use pd::sys::ffi::{PDSystemEvent, PlaydateAPI};
 use pd::sys::EventLoopCtrl;
 use pd::system;
 use pd::system::update::{Update, UpdateCtrl};
+use crate::game::GamePlugin;
 
 /// Entry point
 #[no_mangle]
@@ -34,6 +35,7 @@ fn event_handler(api: NonNull<PlaydateAPI>, event: PDSystemEvent, _: u32) -> Eve
     // unsafe { Instant::set_elapsed(bevydate_time::init(api)) };
 
     let mut app = App::new();
+    app.add_plugins(GamePlugin);
 
     Display::Default().set_refresh_rate(50.);
 
