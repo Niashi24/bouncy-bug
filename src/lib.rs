@@ -14,8 +14,11 @@ use bevy_app::App;
 use bevy_playdate::DefaultPlugins;
 use pd::display::Display;
 use pd::sys::EventLoopCtrl;
-use pd::sys::ffi::{PDSystemEvent, PlaydateAPI};
+use pd::sys::ffi::{LCDColor, PDSystemEvent, PlaydateAPI};
 use bevy_playdate::event::SystemEvent;
+use pd::graphics::bitmap::LCDColorConst;
+use pd::graphics::draw_line;
+use pd::sys::log::println;
 use pd::system::update::{Update, UpdateCtrl};
 
 /// Game state
@@ -27,10 +30,11 @@ impl State {
     fn new() -> Self {
         let mut app = App::new();
         
-        app.add_plugins(DefaultPlugins)
-            .add_plugins(game::GamePlugin);
+        // app.add_plugins(DefaultPlugins)
+        //     .add_plugins(game::GamePlugin);
 
         Self { app }
+        // Self {}
     }
 
     /// System event handler
@@ -44,11 +48,12 @@ impl State {
                 // Register our update handler that defined below
                 self.set_update_handler();
 
-                println!("Game init complete");
+                // println!("Game init complete");
             }
             // TODO: React to other events
             e => {
-                self.app.world_mut().trigger(e);
+                // println!("test {:?}", event);
+                // self.app.world_mut().trigger(e);
             }
         }
         EventLoopCtrl::Continue
@@ -62,7 +67,8 @@ impl Update for State {
 
         // self.app.update();
         // self.app.run_system
-        self.app.update();
+        // self.app.update();
+        draw_line(0, 0, 100, 200, 10, LCDColor::BLACK);
 
         UpdateCtrl::Continue
     }
@@ -80,8 +86,10 @@ pub fn event_handler(
     let event = SystemEvent::from_event(event, sim_key_code);
 
     pub static mut STATE: OnceCell<State> = OnceCell::new();
+    // App::new();
 
     // Call state.event
+    #[allow(static_mut_refs)]
     unsafe { STATE.get_mut_or_init(State::new).event(event) }
 }
 
