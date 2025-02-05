@@ -66,4 +66,4 @@ follow-symlinks = true # follow symlinks    (default is `true`)
 
 [patch.crates-io]
 fixedbitset = { git = "https://github.com/Niashi24/fixedbitset.git", branch = "no_simd" }
-playdate = { git = "https://github.com/boozook/playdate", commit = "66da849"}
+playdate = { git = "https://github.com/boozook/playdate", rev = "66da849"}
