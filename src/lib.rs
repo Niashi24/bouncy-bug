@@ -4,6 +4,7 @@ extern crate alloc;
 #[macro_use]
 extern crate playdate as pd;
 mod game;
+mod tiled;
 
 use bevy_app::App;
 use bevy_playdate::DefaultPlugins;
@@ -14,7 +15,8 @@ fn init_app() -> App {
     let mut app = App::new();
     app
         .add_plugins(GamePlugin)
-        .add_plugins(DefaultPlugins);
+        .add_plugins(DefaultPlugins)
+        .add_plugins(tiled::TiledPlugin);
     
     app
 }

@@ -16,7 +16,11 @@ playdate = "0.2.4"
 portable-atomic-util = "0.2.4"
 bevy_ecs = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy_reflect", "portable-atomic"] }
 bevy_app = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy_reflect", "portable-atomic"] }
-bevy_playdate = { git = "https://github.com/Niashi24/bevy_playdate.git", branch = "indev" }
+bevy_playdate = { git = "https://github.com/Niashi24/bevy_playdate.git" }
+tiled = { git = "https://github.com/Niashi24/rs-tiled.git", branch = "nostd" }
+playdate_io = { git = "https://github.com/Niashi24/playdate_io.git" }
+no_std_io2 = "0.9.0"
+derive_more = { version = "2.0.1", default-features = false, features = ["full"] }
 
 # Playdate Package Info
 # doc: https://github.com/boozook/playdate/blob/main/support/build/README.md#metadata

@@ -4,6 +4,7 @@ use bevy_playdate::input::CrankInput;
 use pd::graphics::color::LCDColorConst;
 use pd::graphics::{draw_ellipse, draw_line};
 use pd::sys::ffi::LCDColor;
+use tiled::Loader;
 
 pub struct GamePlugin;
 
@@ -15,6 +16,7 @@ impl Plugin for GamePlugin {
 }
 
 fn draw_test(mut commands: Commands) {
+    // Loader::with_reader()
     // commands.
     // commands.spawn(Sprite::new());
 }
