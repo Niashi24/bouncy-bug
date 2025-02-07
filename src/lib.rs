@@ -1,6 +1,7 @@
 #![no_std]
 
 extern crate alloc;
+
 #[macro_use]
 extern crate playdate as pd;
 mod game;
