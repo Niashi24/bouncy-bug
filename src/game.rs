@@ -32,10 +32,10 @@ fn draw_test(mut loader: TiledLoader, mut commands: Commands) {
     let tileset = loader.load_tsx_tileset("tiled/tiles.tsx").unwrap();
     // println!("{:?}", tileset);
     
-    let file = FileHandle::read_only("test.txt").unwrap();
-    let mut x = BufWriter::<_, 1000>::new(file);
+    let mut file = FileHandle::write_only("test.txt", false).unwrap();
+    // let mut x = BufWriter::<_, 1000>::new(file);
     let out = format!("{:?}", tileset);
-    x.write(out.as_bytes()).unwrap();
+    file.write(out.as_bytes()).unwrap();
     
     // commands.spawn(TextTest {
     //     text: format!("{:?}", tileset),

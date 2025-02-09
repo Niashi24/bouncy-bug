@@ -2,3 +2,6 @@
 .idea
 Cargo.lock
 /.sentry-native
+
+bevy_playdate/Cargo.toml
+bevy_playdate/target

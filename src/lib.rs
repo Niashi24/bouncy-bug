@@ -6,6 +6,7 @@ extern crate alloc;
 extern crate playdate as pd;
 mod game;
 mod tiled;
+mod file;
 
 use bevy_app::App;
 use bevy_playdate::DefaultPlugins;

@@ -3,6 +3,9 @@ name = "bouncy-bug"
 version = "0.1.0"
 edition = "2021"
 
+[workspace]
+members = ["bevy_playdate"]
+
 [lib]
 path = "src/lib.rs"
 crate-type = [
@@ -12,13 +15,12 @@ crate-type = [
 ]
 
 [dependencies]
-playdate = "0.2.4"
+playdate = { git = "https://github.com/boozook/playdate" }
 portable-atomic-util = "0.2.4"
 bevy_ecs = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy_reflect", "portable-atomic"] }
 bevy_app = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy_reflect", "portable-atomic"] }
-bevy_playdate = { git = "https://github.com/Niashi24/bevy_playdate.git" }
+bevy_playdate = { path = "bevy_playdate" }
 tiled = { git = "https://github.com/Niashi24/rs-tiled.git", branch = "nostd" }
-playdate_io = { git = "https://github.com/Niashi24/playdate_io.git" }
 no_std_io2 = "0.9.0"
 derive_more = { version = "2.0.1", default-features = false, features = ["full"] }
 
@@ -70,4 +72,4 @@ follow-symlinks = true # follow symlinks    (default is `true`)
 
 [patch.crates-io]
 fixedbitset = { git = "https://github.com/Niashi24/fixedbitset.git", branch = "no_simd" }
-playdate = { git = "https://github.com/boozook/playdate", rev = "66da849"}
+#playdate = { git = "https://github.com/boozook/playdate", rev = "66da849"}
