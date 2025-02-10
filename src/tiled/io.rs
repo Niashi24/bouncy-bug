@@ -1,6 +1,6 @@
 ﻿use pd::sys::ffi::FileOptions;
 use tiled::{ResourcePath, ResourceReader};
-use crate::file::FileHandle;
+use bevy_playdate::file::FileHandle;
 
 pub struct PDTiledReader;
 

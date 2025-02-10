@@ -8,6 +8,7 @@ pub mod jobs;
 pub mod sprite;
 pub mod time;
 pub mod view;
+pub mod file;
 
 pub use bevy_playdate_macros::init_app;
 

@@ -1,20 +1,20 @@
+use crate::debug::in_debug;
 use alloc::format;
-use core::cell::UnsafeCell;
-use core::ffi::c_uint;
-use bevy_app::{App, First, FixedUpdate, Plugin, PostUpdate};
+use bevy_app::{App, First, FixedUpdate, Plugin};
 use bevy_ecs::prelude::{IntoSystemConfigs, ResMut, Resource};
-use core::time::Duration;
 use bevy_ecs::system::Res;
 use bevy_platform_support::time::Instant;
 use bevy_time::{Time, TimePlugin};
-use playdate::{api, println};
+use core::cell::UnsafeCell;
+use core::ffi::c_uint;
+use core::time::Duration;
 use playdate::graphics::bitmap::LCDColorConst;
 use playdate::graphics::fill_rect;
 use playdate::graphics::text::draw_text;
 use playdate::sys::ffi::LCDColor;
 use playdate::system::api::Cache;
 use playdate::system::System;
-use crate::debug::in_debug;
+use playdate::api;
 
 pub struct PDTimePlugin;
 

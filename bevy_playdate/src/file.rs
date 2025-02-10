@@ -1,4 +1,6 @@
-﻿use alloc::ffi::CString;
+﻿#![allow(dead_code)]
+
+use alloc::ffi::CString;
 use core::ffi::c_int;
 use core::ffi::c_void;
 
