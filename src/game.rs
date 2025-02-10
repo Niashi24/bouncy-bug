@@ -9,7 +9,7 @@ use pd::graphics::color::{Color, LCDColorConst};
 use pd::graphics::{clear, draw_ellipse, draw_line};
 use pd::graphics::text::draw_text;
 use pd::sys::ffi::LCDColor;
-use playdate_io::FileHandle;
+use crate::file::FileHandle;
 use crate::tiled::TiledLoader;
 
 pub struct GamePlugin;
@@ -29,13 +29,13 @@ impl Plugin for GamePlugin {
 fn draw_test(mut loader: TiledLoader, mut commands: Commands) {
     // Loader::with_reader()
     // commands.
-    let tileset = loader.load_tsx_tileset("tiled/tiles.tsx").unwrap();
-    // println!("{:?}", tileset);
+    // let tileset = loader.load_tsx_tileset("tiled/tiles.tsx").unwrap();
+    // // println!("{:?}", tileset);
     
-    let mut file = FileHandle::write_only("test.txt", false).unwrap();
-    // let mut x = BufWriter::<_, 1000>::new(file);
-    let out = format!("{:?}", tileset);
-    file.write(out.as_bytes()).unwrap();
+    // let mut file = FileHandle::write_only("test.txt", false).unwrap();
+    // // let mut x = BufWriter::<_, 1000>::new(file);
+    // let out = format!("{:?}", tileset);
+    // file.write(out.as_bytes()).unwrap();
     
     // commands.spawn(TextTest {
     //     text: format!("{:?}", tileset),

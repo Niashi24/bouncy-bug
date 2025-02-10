@@ -1,3 +1,5 @@
+cargo-features = ["edition2024"]
+
 [package]
 name = "bevy_playdate_macros"
 version = "0.1.0"

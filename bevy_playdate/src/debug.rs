@@ -1,13 +1,13 @@
-use crate::event::SystemEvent;
 use alloc::collections::VecDeque;
 use bevy_app::{App, Plugin, PostUpdate};
-use bevy_ecs::observer::Trigger;
 use bevy_ecs::prelude::{IntoSystemConfigs, Resource};
 use bevy_ecs::system::{Res, ResMut};
-use playdate::api;
+use bevy_input::ButtonInput;
+use playdate::{api, println};
 use playdate::sprite::draw_sprites;
 use playdate::sys::ffi::LCDColor;
 use playdate::system::System;
+use crate::input::PlaydateButton;
 
 #[macro_export]
 macro_rules! dbg {
@@ -39,10 +39,12 @@ pub struct DebugPlugin;
 impl Plugin for DebugPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Debug>()
-            .add_observer(toggle_debug_system)
             .add_systems(
                 PostUpdate,
-                draw_fps_top_left.after(draw_sprites).run_if(in_debug),
+                (
+                    toggle_debug_system,
+                    draw_fps_top_left.after(draw_sprites).run_if(in_debug),
+                ).chain(),
             );
     }
 }
@@ -55,14 +57,14 @@ pub fn draw_fps_top_left() {
     System::Default().draw_fps(0, 0);
 }
 
-pub fn toggle_debug_system(trigger: Trigger<SystemEvent>, mut debug: ResMut<Debug>) {
-    const BACKTICK: u32 = 96;
-    if matches!(*trigger.event(), SystemEvent::KeyPressed(BACKTICK)) {
+pub fn toggle_debug_system(input: Res<ButtonInput<PlaydateButton>>, mut debug: ResMut<Debug>) {
+    use PlaydateButton as PDB;
+    const DEBUG_COMBO: [PDB; 4] = [PDB::Up, PDB::Right, PDB::A, PDB::B];
+    if input.all_pressed(DEBUG_COMBO) && input.any_just_pressed(DEBUG_COMBO) {
+        println!("here");
         debug.toggle_enabled();
     }
 }
-
-// pub fn debug_print
 
 #[derive(Resource, Default)]
 pub struct Debug {

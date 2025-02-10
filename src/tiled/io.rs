@@ -1,6 +1,6 @@
 ﻿use pd::sys::ffi::FileOptions;
-use playdate_io::FileHandle;
 use tiled::{ResourcePath, ResourceReader};
+use crate::file::FileHandle;
 
 pub struct PDTiledReader;
 
