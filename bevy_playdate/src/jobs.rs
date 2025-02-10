@@ -18,71 +18,28 @@ pub struct JobPlugin;
 
 impl Plugin for JobPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<Jobs>();
+        app.init_resource::<Jobs>()
+            .init_resource::<JobsScheduler>();
         app.add_systems(Last, Jobs::run_jobs);
     }
 }
 
-type JobId = usize;
-
-#[derive(Resource)]
-pub struct Jobs {
-    /// Minimum number of jobs to run per frame
-    pub min_jobs: usize,
+#[derive(Resource, Default)]
+pub struct JobsScheduler {
     id_gen: JobId,
     unstarted: Vec<UnstartedJob>,
-    jobs: BinaryHeap<RunningJob>,
-    finished: HashMap<JobId, FinishedJob>,
 }
 
-type FinishedJob = Result<Box<dyn Any>, Box<dyn Any>>;
+unsafe impl Send for JobsScheduler {}
+unsafe impl Sync for JobsScheduler {}
 
-unsafe impl Send for Jobs {}
-unsafe impl Sync for Jobs {}
-
-impl Default for Jobs {
-    fn default() -> Self {
-        Self {
-            min_jobs: 5,
-            id_gen: 0,
-            unstarted: vec![],
-            jobs: BinaryHeap::new(),
-            finished: Default::default(),
-        }
-    }
-}
-
-pub type Job<Work, Success, Error> = BoxedSystem<In<Work>, WorkResult<Work, Success, Error>>;
-
-impl Jobs {
-    pub fn progress<Work: Any, Success: Any, Error: Any>(
-        &self,
-        job: &JobHandle<Work, Success, Error>,
-    ) -> Option<JobStatusRef<Work, Success, Error>> {
-        if let Some(job) = self.finished.get(&job.id) {
-            return Some(match job {
-                Ok(val) => JobStatusRef::Success(val.downcast_ref().unwrap()),
-                Err(val) => JobStatusRef::Error(val.downcast_ref().unwrap()),
-            });
-        }
-
-        if let Some(job) = self.unstarted.iter().find(|j| j.id == job.id) {
-            return Some(JobStatusRef::InProgress(job.work.downcast_ref().unwrap()));
-        }
-
-        if let Some(job) = self.jobs.iter().find(|j| j.id == job.id) {
-            return Some(JobStatusRef::InProgress(job.work.downcast_ref().unwrap()));
-        }
-
-        None
-    }
-
+impl JobsScheduler {
     fn next_id(&mut self) -> JobId {
         let out = self.id_gen;
         self.id_gen += 1;
         out
     }
-
+    
     pub fn add<Work: Any, Success: Any, Error: Any, M>(
         &mut self,
         priority: isize,
@@ -106,26 +63,73 @@ impl Jobs {
             _phantom_data: Default::default(),
         }
     }
+}
 
-    fn understarted_jobs(&mut self) -> (&mut Vec<UnstartedJob>, &mut BinaryHeap<RunningJob>) {
-        (&mut self.unstarted, &mut self.jobs)
+type JobId = usize;
+
+#[derive(Resource)]
+pub struct Jobs {
+    /// Minimum number of jobs to run per frame
+    pub min_jobs: usize,
+    jobs: BinaryHeap<RunningJob>,
+    finished: HashMap<JobId, FinishedJob>,
+}
+
+type FinishedJob = Result<Box<dyn Any>, Box<dyn Any>>;
+
+unsafe impl Send for Jobs {}
+unsafe impl Sync for Jobs {}
+
+impl Default for Jobs {
+    fn default() -> Self {
+        Self {
+            min_jobs: 5,
+            jobs: BinaryHeap::new(),
+            finished: Default::default(),
+        }
     }
+}
+
+pub type Job<Work, Success, Error> = BoxedSystem<In<Work>, WorkResult<Work, Success, Error>>;
+
+impl Jobs {
+    pub fn progress<Work: Any, Success: Any, Error: Any>(
+        &self,
+        job: &JobHandle<Work, Success, Error>,
+    ) -> Option<JobStatusRef<Work, Success, Error>> {
+        if let Some(job) = self.finished.get(&job.id) {
+            return Some(match job {
+                Ok(val) => JobStatusRef::Success(val.downcast_ref().unwrap()),
+                Err(val) => JobStatusRef::Error(val.downcast_ref().unwrap()),
+            });
+        }
+
+        if let Some(job) = self.jobs.iter().find(|j| j.id == job.id) {
+            return Some(JobStatusRef::InProgress(job.work.downcast_ref().unwrap()));
+        }
+
+        None
+    }
+
+    // fn understarted_jobs(&mut self) -> (&mut Vec<UnstartedJob>, &mut BinaryHeap<RunningJob>) {
+    //     (&mut self.unstarted, &mut self.jobs)
+    // }
 
     /// System to run jobs
     pub fn run_jobs(world: &mut World, mut skip_buffer: Local<Vec<RunningJob>>) {
         world.resource_scope(|world, mut jobs: Mut<Jobs>| {
-            let (unstarted, jbs) = jobs.understarted_jobs();
-            for job in unstarted.drain(..) {
-                let j = world.register_boxed_system(job.job);
+            world.resource_scope(|world, mut scheduler: Mut<JobsScheduler>| {
+                for job in scheduler.unstarted.drain(..) {
+                    let j = world.register_boxed_system(job.job);
 
-                jbs.push(RunningJob {
-                    priority: job.priority,
-                    work: job.work,
-                    id: job.id,
-                    job: j,
-                });
-            }
-
+                    jobs.jobs.push(RunningJob {
+                        priority: job.priority,
+                        work: job.work,
+                        id: job.id,
+                        job: j,
+                    });
+                }
+            });
 
             for _ in 0..jobs.min_jobs {
                 run_job(jobs.deref_mut(), world, skip_buffer.deref_mut());

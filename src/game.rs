@@ -9,7 +9,7 @@ use pd::graphics::color::LCDColorConst;
 use pd::graphics::fill_rect;
 use pd::graphics::text::draw_text;
 use pd::sys::ffi::LCDColor;
-use bevy_playdate::jobs::{JobHandle, JobStatusRef, Jobs, WorkResult};
+use bevy_playdate::jobs::{JobHandle, JobStatusRef, Jobs, JobsScheduler, WorkResult};
 use bevy_playdate::time::RunningTimer;
 
 pub struct GamePlugin;
@@ -22,7 +22,7 @@ impl Plugin for GamePlugin {
     }
 }
 
-fn test_spawn_job(mut commands: Commands, mut jobs: ResMut<Jobs>) {
+fn test_spawn_job(mut commands: Commands, mut jobs: ResMut<JobsScheduler>) {
     
     commands.spawn(JobTestComponent {
         job: jobs.add(0, TestJob(0), test_job),
