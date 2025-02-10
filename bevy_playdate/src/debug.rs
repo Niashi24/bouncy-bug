@@ -1,15 +1,19 @@
 use alloc::collections::VecDeque;
-use bevy_app::{App, Plugin, PostUpdate};
+use core::time::Duration;
+use bevy_app::{App, Last, Plugin, PostUpdate};
 use bevy_ecs::prelude::{IntoSystemConfigs, Resource};
 use bevy_ecs::system::{Res, ResMut};
 use bevy_input::ButtonInput;
+use bevy_math::IVec2;
 use playdate::{api, println};
 use playdate::graphics::bitmap::LCDColorConst;
-use playdate::graphics::fill_rect;
+use playdate::graphics::{draw_line, fill_rect};
 use playdate::sprite::draw_sprites;
 use playdate::sys::ffi::LCDColor;
 use playdate::system::System;
 use crate::input::PlaydateButton;
+use crate::jobs::Jobs;
+use crate::time::RunningTimer;
 
 #[macro_export]
 macro_rules! dbg {
@@ -48,6 +52,7 @@ impl Plugin for DebugPlugin {
                     draw_fps_top_left.after(draw_sprites).run_if(in_debug),
                 ).chain(),
             );
+        app.add_plugins(FpsLinesPlugin);
     }
 }
 
@@ -175,3 +180,67 @@ impl Debug {
         }
     }
 }
+
+pub struct FpsLinesPlugin;
+
+impl Plugin for FpsLinesPlugin {
+    fn build(&self, app: &mut App) {
+        app
+            .init_resource::<FpsLines>()
+            .add_systems(
+                Last, 
+                (FpsLines::push_frame_system, FpsLines::draw_system.run_if(in_debug))
+                    .chain()
+                    .after(Jobs::run_jobs_system)
+            );
+    }
+}
+
+#[derive(Resource)]
+pub struct FpsLines {
+    frames: VecDeque<Duration>,
+    max_frames: usize,
+    display_scale: f32,
+}
+
+impl Default for FpsLines {
+    fn default() -> Self {
+        Self {
+            frames: VecDeque::with_capacity(50),
+            max_frames: 50,
+            display_scale: 1000.0,
+        }
+    }
+}
+
+impl FpsLines {
+    pub fn push(&mut self, delta: Duration) {
+        if self.frames.len() >= self.max_frames {
+            self.frames.pop_front();
+        }
+        
+        self.frames.push_back(delta);
+    }
+    
+    pub fn draw(&self, bottom_right: IVec2) {
+        let mut x = bottom_right.x;
+        for frame in &self.frames {
+            let height = (frame.as_secs_f32() * self.display_scale) as i32;
+            draw_line(x, bottom_right.y, x, bottom_right.y - height, 1, LCDColor::BLACK);
+            
+            x -= 1;
+        }
+    }
+    
+    pub fn push_frame_system(mut fps: ResMut<Self>, timer: Res<RunningTimer>) {
+        fps.push(timer.time_in_frame());
+    }
+    
+    pub fn draw_system(fps: Res<Self>) {
+        fps.draw(IVec2::new(399, 239));
+    }
+}
+
+
+
+

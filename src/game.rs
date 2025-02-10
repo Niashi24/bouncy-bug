@@ -3,13 +3,17 @@ use alloc::string::ToString;
 use core::cell::RefMut;
 use crate::tiled::TiledLoader;
 use bevy_app::{App, Last, Plugin, Startup, Update};
+use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::{Component, IntoSystemConfigs};
 use bevy_ecs::system::{Commands, In, Query, Res, ResMut};
-use pd::graphics::color::LCDColorConst;
+use bevy_input::ButtonInput;
+use pd::graphics::color::{Color, LCDColorConst};
 use pd::graphics::fill_rect;
 use pd::graphics::text::draw_text;
 use pd::sys::ffi::LCDColor;
+use bevy_playdate::input::PlaydateButton;
 use bevy_playdate::jobs::{JobHandle, JobStatusRef, Jobs, JobsScheduler, WorkResult};
+use bevy_playdate::sprite::Sprite;
 use bevy_playdate::time::RunningTimer;
 
 pub struct GamePlugin;
@@ -18,11 +22,13 @@ impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, test_spawn_job);
         // app.add_systems(Update, draw_text_test);
-        app.add_systems(Last, display_job.after(Jobs::run_jobs));
+        app.add_systems(Last, (control_job, display_job).chain().after(Jobs::run_jobs_system));
     }
 }
 
 fn test_spawn_job(mut commands: Commands, mut jobs: ResMut<JobsScheduler>) {
+    
+    commands.spawn(Sprite::new_from_draw(10, 10, Color::BLACK, |_| {}));
     
     commands.spawn(JobTestComponent {
         job: jobs.add(0, TestJob(0), test_job),
@@ -44,7 +50,7 @@ fn display_job(q_test: Query<&JobTestComponent>, jobs: Res<Jobs>, timer: Res<Run
     
     let mut y = 64;
     fill_rect(64, y, 150, 16, LCDColor::WHITE);
-    draw_text(format!("r: {:.4}", timer.time_in_frame().as_secs_f32()), 64, y).unwrap();
+    draw_text(format!("r: {:.1}ms", timer.time_in_frame().as_secs_f32() * 1000.0), 64, y).unwrap();
     
     y += 16;
     for test in q_test.iter() {
@@ -67,6 +73,27 @@ fn display_job(q_test: Query<&JobTestComponent>, jobs: Res<Jobs>, timer: Res<Run
     }
     
     
+}
+
+fn control_job(
+    q_test: Query<(Entity, &JobTestComponent)>,
+    mut jobs: ResMut<Jobs>,
+    mut scheduler: ResMut<JobsScheduler>,
+    mut commands: Commands,
+    input: Res<ButtonInput<PlaydateButton>>
+) {
+    if input.just_pressed(PlaydateButton::A) {
+        commands.spawn(JobTestComponent {
+            job: scheduler.add(1, TestJob(6000), test_job),
+        });
+    }
+    
+    if input.just_pressed(PlaydateButton::B) {
+        if let Some((e, job)) = q_test.iter().next() {
+            jobs.cancel(&job.job);
+            commands.entity(e).despawn();
+        }
+    }
 }
 
 #[derive(Component)]

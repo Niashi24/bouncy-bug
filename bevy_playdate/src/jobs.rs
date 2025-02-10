@@ -20,7 +20,7 @@ impl Plugin for JobPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Jobs>()
             .init_resource::<JobsScheduler>();
-        app.add_systems(Last, Jobs::run_jobs);
+        app.add_systems(Last, Jobs::run_jobs_system);
     }
 }
 
@@ -73,6 +73,7 @@ pub struct Jobs {
     pub min_jobs: usize,
     jobs: BinaryHeap<RunningJob>,
     finished: HashMap<JobId, FinishedJob>,
+    to_cancel: Vec<RunningJob>,
 }
 
 type FinishedJob = Result<Box<dyn Any>, Box<dyn Any>>;
@@ -86,6 +87,7 @@ impl Default for Jobs {
             min_jobs: 5,
             jobs: BinaryHeap::new(),
             finished: Default::default(),
+            to_cancel: vec![],
         }
     }
 }
@@ -116,8 +118,13 @@ impl Jobs {
     // }
 
     /// System to run jobs
-    pub fn run_jobs(world: &mut World, mut skip_buffer: Local<Vec<RunningJob>>) {
+    pub fn run_jobs_system(world: &mut World, mut skip_buffer: Local<Vec<RunningJob>>) {
         world.resource_scope(|world, mut jobs: Mut<Jobs>| {
+            for job in jobs.to_cancel.drain(..) {
+                world.unregister_system(job.job)
+                    .expect("unregister canceled system");
+            }
+            
             world.resource_scope(|world, mut scheduler: Mut<JobsScheduler>| {
                 for job in scheduler.unstarted.drain(..) {
                     let j = world.register_boxed_system(job.job);
@@ -132,20 +139,72 @@ impl Jobs {
             });
 
             for _ in 0..jobs.min_jobs {
-                run_job(jobs.deref_mut(), world, skip_buffer.deref_mut());
+                let continue_jobs = jobs.run_job(world, skip_buffer.deref_mut());
+                if !continue_jobs {
+                    break;
+                }
             }
             
             // target hertz we want to meet
             // default is 50fps = 20ms = 0.02s, then let's give an extra 5ms of leeway
             const TARGET_HERTZ: f32 = 0.02 - 0.005;
             while world.resource::<RunningTimer>().time_in_frame().as_secs_f32() < TARGET_HERTZ {
-                run_job(jobs.deref_mut(), world, skip_buffer.deref_mut());
+                let continue_jobs = jobs.run_job(world, skip_buffer.deref_mut());
+                if !continue_jobs {
+                    break;
+                }
             }
 
             for job in skip_buffer.deref_mut().drain(..) {
                 jobs.jobs.push(job);
             }
         });
+    }
+    
+    #[must_use]
+    fn run_job(&mut self, world: &mut World, skip_buffer: &mut Vec<RunningJob>) -> bool {
+        let Some(mut job) = self.jobs.pop() else {
+            return false;
+        };
+
+        match world.run_system_with(job.job, job.work).unwrap() {
+            ErasedWorkStatus::Continue(val) => {
+                job.work = val;
+                self.jobs.push(job);
+            }
+            ErasedWorkStatus::Skip(val) => {
+                job.work = val;
+                skip_buffer.push(job);
+            }
+            ErasedWorkStatus::Success(val) => {
+                self.finished.insert(job.id, Ok(val));
+                world.unregister_system(job.job)
+                    .expect("unregister completed system (success)");
+            }
+            ErasedWorkStatus::Error(val) => {
+                self.finished.insert(job.id, Err(val));
+                world.unregister_system(job.job)
+                    .expect("unregister completed system (error)");
+            }
+        }
+
+        true
+    }
+    
+    pub fn cancel<Work: Any, Success: Any, Error: Any>(
+        &mut self,
+        job: &JobHandle<Work, Success, Error>,
+    ) {
+        if self.try_claim(job).is_some() {
+            return;
+        }
+        
+        let mut v = core::mem::take(&mut self.jobs).into_vec();
+        if let Some((i, _)) = v.iter().enumerate().find(|(_, j)| j.id == job.id) {
+            let item = v.swap_remove(i);
+            self.to_cancel.push(item);
+        }
+        self.jobs = BinaryHeap::from(v);
     }
 
     pub fn try_claim<Work: Any, Success: Any, Error: Any>(
@@ -160,32 +219,6 @@ impl Jobs {
     }
 }
 
-fn run_job(jobs: &mut Jobs, world: &mut World, skip_buffer: &mut Vec<RunningJob>) -> bool {
-    let Some(mut job) = jobs.jobs.pop() else {
-        return false;
-    };
-
-    match world.run_system_with(job.job, job.work).unwrap() {
-        ErasedWorkStatus::Continue(val) => {
-            job.work = val;
-            jobs.jobs.push(job);
-        }
-        ErasedWorkStatus::Skip(val) => {
-            job.work = val;
-            skip_buffer.push(job);
-        }
-        ErasedWorkStatus::Success(val) => {
-            jobs.finished.insert(job.id, Ok(val));
-            world.unregister_system(job.job).unwrap();
-        }
-        ErasedWorkStatus::Error(val) => {
-            jobs.finished.insert(job.id, Err(val));
-            world.unregister_system(job.job).unwrap();
-        }
-    }
-
-    true
-}
 
 fn pipe_any<T: Any>(In(val): In<Box<dyn Any>>) -> T {
     *val.downcast().unwrap()
