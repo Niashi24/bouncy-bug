@@ -20,10 +20,10 @@ pub struct PDTimePlugin;
 
 impl Plugin for PDTimePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(TimePlugin);
         unsafe {
             Instant::set_elapsed(init());
         }
+        app.add_plugins(TimePlugin);
         app
             .init_resource::<RunningTimer>()
             .add_systems(First, RunningTimer::update_system);

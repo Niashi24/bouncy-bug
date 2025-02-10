@@ -8,16 +8,20 @@ mod game;
 mod tiled;
 
 use bevy_app::App;
+use pd::display::Display;
 use bevy_playdate::DefaultPlugins;
 use crate::game::GamePlugin;
 
 #[bevy_playdate::init_app]
 fn init_app() -> App {
+    Display::Default().set_refresh_rate(50.0);
+    
     let mut app = App::new();
     app
         .add_plugins(GamePlugin)
         .add_plugins(DefaultPlugins)
-        .add_plugins(tiled::TiledPlugin);
+        .add_plugins(tiled::TiledPlugin)
+        .add_plugins(bevy_playdate::jobs::JobPlugin);
     
     app
 }

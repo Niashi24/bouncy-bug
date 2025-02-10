@@ -9,15 +9,17 @@ use core::any::Any;
 use core::cmp::Ordering;
 use core::marker::PhantomData;
 use core::ops::DerefMut;
-use bevy_app::{App, Plugin};
+use bevy_app::{App, Last, Plugin};
 use derive_more::From;
 use hashbrown::HashMap;
+use crate::time::RunningTimer;
 
 pub struct JobPlugin;
 
 impl Plugin for JobPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Jobs>();
+        app.add_systems(Last, Jobs::run_jobs);
     }
 }
 
@@ -124,32 +126,17 @@ impl Jobs {
                 });
             }
 
+
             for _ in 0..jobs.min_jobs {
-                let Some(mut job) = jobs.jobs.pop() else {
-                    break;
-                };
-
-                match world.run_system_with(job.job, job.work).unwrap() {
-                    ErasedWorkStatus::Continue(val) => {
-                        job.work = val;
-                        jobs.jobs.push(job);
-                    }
-                    ErasedWorkStatus::Skip(val) => {
-                        job.work = val;
-                        skip_buffer.deref_mut().push(job);
-                    }
-                    ErasedWorkStatus::Success(val) => {
-                        jobs.finished.insert(job.id, Ok(val));
-                        world.unregister_system(job.job).unwrap();
-                    }
-                    ErasedWorkStatus::Error(val) => {
-                        jobs.finished.insert(job.id, Err(val));
-                        world.unregister_system(job.job).unwrap();
-                    }
-                }
+                run_job(jobs.deref_mut(), world, skip_buffer.deref_mut());
             }
-
-            // Todo: do jobs while time still left
+            
+            // target hertz we want to meet
+            // default is 50fps = 20ms = 0.02s, then let's give an extra 5ms of leeway
+            const TARGET_HERTZ: f32 = 0.02 - 0.005;
+            while world.resource::<RunningTimer>().time_in_frame().as_secs_f32() < TARGET_HERTZ {
+                run_job(jobs.deref_mut(), world, skip_buffer.deref_mut());
+            }
 
             for job in skip_buffer.deref_mut().drain(..) {
                 jobs.jobs.push(job);
@@ -167,6 +154,33 @@ impl Jobs {
             Some(Err(val)) => Some(Err(*val.downcast().unwrap())),
         }
     }
+}
+
+fn run_job(jobs: &mut Jobs, world: &mut World, skip_buffer: &mut Vec<RunningJob>) -> bool {
+    let Some(mut job) = jobs.jobs.pop() else {
+        return false;
+    };
+
+    match world.run_system_with(job.job, job.work).unwrap() {
+        ErasedWorkStatus::Continue(val) => {
+            job.work = val;
+            jobs.jobs.push(job);
+        }
+        ErasedWorkStatus::Skip(val) => {
+            job.work = val;
+            skip_buffer.push(job);
+        }
+        ErasedWorkStatus::Success(val) => {
+            jobs.finished.insert(job.id, Ok(val));
+            world.unregister_system(job.job).unwrap();
+        }
+        ErasedWorkStatus::Error(val) => {
+            jobs.finished.insert(job.id, Err(val));
+            world.unregister_system(job.job).unwrap();
+        }
+    }
+
+    true
 }
 
 fn pipe_any<T: Any>(In(val): In<Box<dyn Any>>) -> T {

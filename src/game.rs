@@ -1,18 +1,91 @@
-﻿use crate::tiled::TiledLoader;
-use bevy_app::{App, Plugin, Startup};
-use bevy_ecs::system::Commands;
+﻿use alloc::format;
+use alloc::string::ToString;
+use core::cell::RefMut;
+use crate::tiled::TiledLoader;
+use bevy_app::{App, Last, Plugin, Startup, Update};
+use bevy_ecs::prelude::{Component, IntoSystemConfigs};
+use bevy_ecs::system::{Commands, In, Query, Res, ResMut};
+use pd::graphics::color::LCDColorConst;
+use pd::graphics::fill_rect;
+use pd::graphics::text::draw_text;
+use pd::sys::ffi::LCDColor;
+use bevy_playdate::jobs::{JobHandle, JobStatusRef, Jobs, WorkResult};
+use bevy_playdate::time::RunningTimer;
 
 pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, draw_test);
+        app.add_systems(Startup, test_spawn_job);
         // app.add_systems(Update, draw_text_test);
+        app.add_systems(Last, display_job.after(Jobs::run_jobs));
     }
 }
 
+fn test_spawn_job(mut commands: Commands, mut jobs: ResMut<Jobs>) {
+    
+    commands.spawn(JobTestComponent {
+        job: jobs.add(0, TestJob(0), test_job),
+    });
+    commands.spawn(JobTestComponent {
+        job: jobs.add(0, TestJob(5000), test_job),
+    });
+    commands.spawn(JobTestComponent {
+        job: jobs.add(1, TestJob(2000), test_job),
+    });
+    commands.spawn(JobTestComponent {
+        job: jobs.add(1, TestJob(6000), test_job),
+    });
+}
+
+
+
+fn display_job(q_test: Query<&JobTestComponent>, jobs: Res<Jobs>, timer: Res<RunningTimer>) {
+    
+    let mut y = 64;
+    fill_rect(64, y, 150, 16, LCDColor::WHITE);
+    draw_text(format!("r: {:.4}", timer.time_in_frame().as_secs_f32()), 64, y).unwrap();
+    
+    y += 16;
+    for test in q_test.iter() {
+        let progress = jobs.progress(&test.job);
+        
+        fill_rect(64, y, 150, 16, LCDColor::WHITE);
+        match progress {
+            Some(JobStatusRef::InProgress(counter)) => {
+                draw_text(format!("current: {}", counter.0), 64, y).unwrap();
+            }
+            Some(JobStatusRef::Success(())) => {
+                draw_text("finished".to_string(), 64, y).unwrap();
+            }
+            _ => {
+                draw_text("in progress", 64, y).unwrap();
+            }
+        }
+        
+        y += 16;
+    }
+    
+    
+}
+
+#[derive(Component)]
 struct JobTestComponent {
-    // pub job: JobHandle<JobTest, >,
+    pub job: JobHandle<TestJob, (), ()>,
+}
+
+#[derive(Default)]
+struct TestJob(pub i32);
+
+fn test_job(counter: In<TestJob>) -> WorkResult<TestJob, (), ()> {
+    let mut counter = counter.0;
+    counter.0 += 1;
+        
+    if counter.0 >= 10000 {
+        WorkResult::Success(())
+    } else {
+        WorkResult::Continue(counter)
+    }
 }
 
 // enum JobTest {

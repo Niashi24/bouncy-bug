@@ -4,6 +4,8 @@ use bevy_ecs::prelude::{IntoSystemConfigs, Resource};
 use bevy_ecs::system::{Res, ResMut};
 use bevy_input::ButtonInput;
 use playdate::{api, println};
+use playdate::graphics::bitmap::LCDColorConst;
+use playdate::graphics::fill_rect;
 use playdate::sprite::draw_sprites;
 use playdate::sys::ffi::LCDColor;
 use playdate::system::System;
@@ -54,6 +56,7 @@ pub fn in_debug(debug: Res<Debug>) -> bool {
 }
 
 pub fn draw_fps_top_left() {
+    fill_rect(0, 0, 15, 12, LCDColor::WHITE);
     System::Default().draw_fps(0, 0);
 }
 
