@@ -22,10 +22,9 @@ impl Plugin for DefaultPlugins {
         app.add_plugins((
             input::InputPlugin,
             sprite::SpritePlugin,
-            time::TimePlugin,
+            time::PDTimePlugin,
             debug::DebugPlugin,
             view::ViewPlugin,
-            bevy_transform::TransformPlugin,
         ));
     }
 }

@@ -9,8 +9,17 @@ use core::any::Any;
 use core::cmp::Ordering;
 use core::marker::PhantomData;
 use core::ops::DerefMut;
+use bevy_app::{App, Plugin};
 use derive_more::From;
 use hashbrown::HashMap;
+
+pub struct JobPlugin;
+
+impl Plugin for JobPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<Jobs>();
+    }
+}
 
 type JobId = usize;
 

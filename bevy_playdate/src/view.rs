@@ -12,6 +12,7 @@ pub struct ViewPlugin;
 
 impl Plugin for ViewPlugin {
     fn build(&self, app: &mut App) {
+        app.add_plugins(bevy_transform::TransformPlugin);
         app.add_systems(
             PostUpdate,
             view_system

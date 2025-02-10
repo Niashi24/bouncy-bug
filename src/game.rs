@@ -9,6 +9,7 @@ use pd::graphics::color::{Color, LCDColorConst};
 use pd::graphics::{clear, draw_ellipse, draw_line};
 use pd::graphics::text::draw_text;
 use pd::sys::ffi::LCDColor;
+use bevy_playdate::jobs::JobHandle;
 use crate::file::FileHandle;
 use crate::tiled::TiledLoader;
 
@@ -20,6 +21,14 @@ impl Plugin for GamePlugin {
         // app.add_systems(Update, draw_text_test);
     }
 }
+
+struct JobTestComponent {
+    // pub job: JobHandle<JobTest, >,
+}
+
+// enum JobTest {
+//     
+// }
 
 // #[derive(Component)]
 // pub struct TextTest {
