@@ -137,3 +137,100 @@ impl Drop for FileHandle {
         unsafe { playdate_sys::api!(file).close.unwrap()(self.handle) };
     }
 }
+
+pub struct BufferedWriter<W: Write, const N: usize> {
+    inner: W,
+    buffer: [u8; N],
+    pos: usize,
+}
+
+impl<W: Write> BufferedWriter<W, 1024> {
+    pub fn new_default(inner: W) -> Self {
+        Self::new(inner)
+    }
+}
+
+impl<W: Write, const N: usize> BufferedWriter<W, N> {    
+    pub fn new(inner: W) -> Self {
+        Self {
+            inner,
+            buffer: [0; N],
+            pos: 0,
+        }
+    }
+
+    pub fn flush(&mut self) -> io::Result<()> {
+        if self.pos > 0 {
+            self.inner.write_all(&self.buffer[..self.pos])?;
+            self.pos = 0;
+        }
+        self.inner.flush()
+    }
+}
+
+impl<W: Write, const N: usize> Write for BufferedWriter<W, N> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        if buf.len() >= N {
+            self.flush()?;
+            return self.inner.write(buf);
+        }
+
+        if self.pos + buf.len() > N {
+            self.flush()?;
+        }
+
+        self.buffer[self.pos..self.pos + buf.len()].copy_from_slice(buf);
+        self.pos += buf.len();
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        BufferedWriter::flush(self)
+    }
+}
+
+impl<W: Write, const N: usize> Drop for BufferedWriter<W, N> {
+    fn drop(&mut self) {
+        let _ = self.flush(); // Ignore errors in Drop
+    }
+}
+
+pub struct BufferedReader<R: Read, const N: usize> {
+    inner: R,
+    buffer: [u8; N],
+    pos: usize,
+    end: usize,
+}
+
+impl<R: Read, const N: usize> BufferedReader<R, N> {
+    pub fn new(inner: R) -> Self {
+        Self {
+            inner,
+            buffer: [0; N],
+            pos: 0,
+            end: 0,
+        }
+    }
+
+    pub fn fill_buffer(&mut self) -> io::Result<()> {
+        self.pos = 0;
+        self.end = self.inner.read(&mut self.buffer)?;
+        Ok(())
+    }
+}
+
+impl<R: Read, const N: usize> Read for BufferedReader<R, N> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        if self.pos == self.end {
+            self.fill_buffer()?;
+            if self.end == 0 {
+                return Ok(0);
+            }
+        }
+
+        let len = buf.len().min(self.end - self.pos);
+        buf[..len].copy_from_slice(&self.buffer[self.pos..self.pos + len]);
+        self.pos += len;
+        Ok(len)
+    }
+}
