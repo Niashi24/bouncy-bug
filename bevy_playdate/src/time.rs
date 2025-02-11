@@ -16,6 +16,8 @@ use playdate::system::api::Cache;
 use playdate::system::System;
 use playdate::api;
 
+/// Whatever you do, do NOT call reset_elapsed_time.
+/// Use the utilities from [`bevy_time`], such as [`bevy_time::Timer`]
 pub struct PDTimePlugin;
 
 impl Plugin for PDTimePlugin {
@@ -52,11 +54,11 @@ impl RunningTimer {
     }
     
     pub fn update(&mut self) {
-        self.start_time = self.system.current_time();
+        self.start_time = self.system.elapsed_time();
     }
     
     pub fn time_in_frame(&self) -> Duration {
-        self.system.current_time() - self.start_time
+        self.system.elapsed_time() - self.start_time
     }
 }
 
@@ -76,22 +78,11 @@ struct CurrentTimeFn(UnsafeCell<Option<unsafe extern "C" fn() -> c_uint>>);
 unsafe impl Sync for CurrentTimeFn {}
 
 fn get_elapsed() -> Duration {
-    // SAFETY: We are guranteed by [`init`] that we will never be called until
-    // [`GET_CURRENT_TIME`] is initialized into a valid and correct function pointer.
-    unsafe {
-        let get_elapsed_ms = (*(GET_CURRENT_TIME.0.get())).unwrap_unchecked();
-        Duration::from_millis(get_elapsed_ms().into())
-    }
+    System::Default().elapsed_time()
 }
 
 pub fn init() -> fn() -> Duration {
-    
-    let current_time_fn = api!(system).getCurrentTimeMilliseconds.expect("getCurrentTimeMilliseconds");
-    // SAFETY: we are the only ones accessing [`GET_CURRENT_TIME`] since it's defined in this
-    // module to be only accessed by this function and [`get_elapsed`]
-    unsafe {
-        *GET_CURRENT_TIME.0.get() = Some(current_time_fn);
-    }
+    System::Default().reset_elapsed_time();
 
     get_elapsed
 }
