@@ -1,6 +1,6 @@
 use crate::debug::in_debug;
 use alloc::format;
-use bevy_app::{App, First, FixedUpdate, Plugin};
+use bevy_app::{App, First, FixedUpdate, Plugin, PostUpdate};
 use bevy_ecs::prelude::{IntoSystemConfigs, ResMut, Resource};
 use bevy_ecs::system::Res;
 use bevy_platform_support::time::Instant;
@@ -15,6 +15,7 @@ use playdate::sys::ffi::LCDColor;
 use playdate::system::api::Cache;
 use playdate::system::System;
 use playdate::api;
+use crate::sprite::PostSprite;
 
 /// Whatever you do, do NOT call reset_elapsed_time.
 /// Use the utilities from [`bevy_time`], such as [`bevy_time::Timer`]
@@ -29,7 +30,7 @@ impl Plugin for PDTimePlugin {
         app
             .init_resource::<RunningTimer>()
             .add_systems(First, RunningTimer::update_system);
-        app.add_systems(FixedUpdate, debug_time.run_if(in_debug));
+        app.add_systems(PostSprite, debug_time.run_if(in_debug));
     }
 }
 
@@ -70,19 +71,12 @@ fn debug_time(time: Res<Time>, running: Res<RunningTimer>) {
     draw_text(format!("r: {:.2}", running.time_in_frame().as_secs_f32()), 0, 48).unwrap();
 }
 
-static GET_CURRENT_TIME: CurrentTimeFn = CurrentTimeFn(UnsafeCell::new(None));
-
-struct CurrentTimeFn(UnsafeCell<Option<unsafe extern "C" fn() -> c_uint>>);
-
-// SAFETY: Playdate is single threaded so data will never be synced between different threads
-unsafe impl Sync for CurrentTimeFn {}
-
-fn get_elapsed() -> Duration {
-    System::Default().elapsed_time()
-}
-
 pub fn init() -> fn() -> Duration {
     System::Default().reset_elapsed_time();
+
+    fn get_elapsed() -> Duration {
+        System::Default().elapsed_time()
+    }
 
     get_elapsed
 }

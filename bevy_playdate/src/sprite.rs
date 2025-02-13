@@ -1,10 +1,12 @@
+use bevy_ecs::schedule::IntoSystemConfigs;
 use crate::angle::PDAngle;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 use bevy_app::{App, Plugin, PostUpdate};
 use bevy_ecs::component::{Component, HookContext};
 use bevy_ecs::prelude::require;
-use bevy_ecs::world::DeferredWorld;
+use bevy_ecs::schedule::ScheduleLabel;
+use bevy_ecs::world::{DeferredWorld, World};
 use bevy_transform::prelude::Transform;
 use derive_more::Deref;
 use playdate::api;
@@ -20,8 +22,19 @@ pub struct SpritePlugin;
 impl Plugin for SpritePlugin {
     fn build(&self, app: &mut App) {
         // todo: reflect component
-        app.add_systems(PostUpdate, draw_sprites);
+        app.add_systems(PostUpdate, (draw_sprites, run_post_sprite).chain());
     }
+}
+
+/// A schedule that is triggered in [`PostUpdate`] after [`draw_sprites`] is called.
+/// The screen is effectively cleared when `draw_sprites` is called,
+/// so this if you want to draw something in a immediate-mode sense (using the draw_{} calls)
+/// and don't want to have to put `.after(draw_sprites)` everywhere.
+#[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, ScheduleLabel)]
+pub struct PostSprite;
+
+pub fn run_post_sprite(world: &mut World) {
+    world.run_schedule(PostSprite);
 }
 
 #[derive(Component, Clone, Deref)]
@@ -49,7 +62,7 @@ unsafe impl Send for Sprite {}
 unsafe impl Sync for Sprite {}
 
 pub fn empty_bitmap() -> Rc<Bitmap> {
-    Rc::new(Bitmap::new(0, 0, Color::CLEAR).expect("create default empty bitmap"))
+    Rc::new(Bitmap::new(10, 10, Color::CLEAR).expect("create default empty bitmap"))
 }
 
 impl Sprite {
