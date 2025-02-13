@@ -146,8 +146,8 @@ impl Jobs {
             }
             
             // target hertz we want to meet
-            // default is 50fps = 20ms = 0.02s, then let's give an extra 5ms of leeway
-            const TARGET_HERTZ: f32 = 0.02 - 0.005;
+            // default is 50fps = 20ms = 0.02s, then let's give an extra 9ms of leeway
+            const TARGET_HERTZ: f32 = 0.02 - 0.009;
             while world.resource::<RunningTimer>().time_in_frame().as_secs_f32() < TARGET_HERTZ {
                 let continue_jobs = jobs.run_job(world, skip_buffer.deref_mut());
                 if !continue_jobs {
