@@ -50,7 +50,7 @@ fn display_job(q_test: Query<&JobTestComponent>, jobs: Res<Jobs>, timer: Res<Run
     
     let mut y = 64;
     fill_rect(64, y, 150, 16, LCDColor::WHITE);
-    draw_text(format!("r: {:.1}ms", timer.time_in_frame().as_secs_f32() * 1000.0), 64, y).unwrap();
+    draw_text(format!("r: {:.3}ms", timer.time_in_frame().as_secs_f32() * 1000.0), 64, y).unwrap();
     
     y += 16;
     for test in q_test.iter() {
