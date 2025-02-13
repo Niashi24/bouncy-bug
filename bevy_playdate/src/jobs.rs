@@ -179,12 +179,12 @@ impl Jobs {
             ErasedWorkStatus::Success(val) => {
                 self.finished.insert(job.id, Ok(val));
                 world.unregister_system(job.job)
-                    .expect("unregister completed system (success)");
+                    .expect("unregister completed job (success)");
             }
             ErasedWorkStatus::Error(val) => {
                 self.finished.insert(job.id, Err(val));
                 world.unregister_system(job.job)
-                    .expect("unregister completed system (error)");
+                    .expect("unregister completed job (error)");
             }
         }
 
