@@ -8,6 +8,7 @@ use bevy_math::IVec2;
 use playdate::{api, println};
 use playdate::graphics::bitmap::LCDColorConst;
 use playdate::graphics::{draw_line, fill_rect};
+use playdate::graphics::text::draw_text;
 use playdate::sprite::draw_sprites;
 use playdate::sys::ffi::LCDColor;
 use playdate::system::System;
@@ -208,7 +209,7 @@ impl Default for FpsLines {
         Self {
             frames: VecDeque::with_capacity(50),
             max_frames: 50,
-            display_scale: 1000.0,
+            display_scale: 2000.0,
         }
     }
 }
