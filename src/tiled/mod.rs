@@ -1,15 +1,17 @@
-﻿use bevy_app::{App, Plugin};
+﻿use alloc::string::ToString;
+use bevy_app::{App, Plugin};
 use bevy_ecs::system::NonSendMut;
-use tiled::{DefaultResourceCache, Loader};
+use portable_atomic_util::Arc;
+use tiled::{DefaultResourceCache, Loader, ResourceCache, ResourcePath, Template, Tileset};
+use bevy_playdate::asset::AssetCache;
 
 mod io;
-
-pub type TiledLoader<'w> = NonSendMut<'w, Loader<io::PDTiledReader, DefaultResourceCache>>;
+pub mod loader;
 
 pub struct TiledPlugin;
 
 impl Plugin for TiledPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_non_send_resource(Loader::with_reader(io::PDTiledReader));
+        
     }
 }
