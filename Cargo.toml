@@ -20,11 +20,15 @@ playdate = { git = "https://github.com/boozook/playdate", rev = "66da849" }
 portable-atomic-util = "0.2.4"
 bevy_ecs = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy_reflect", "portable-atomic"] }
 bevy_app = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy_reflect", "portable-atomic"] }
+bevy_reflect = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy"]}
 bevy_playdate = { path = "bevy_playdate" }
+hashbrown = { version = "0.15.2", default-features = false, features = ["default-hasher"] }
 bevy_input = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["smol_str"] }
 tiled = { git = "https://github.com/Niashi24/rs-tiled.git", branch = "nostd" }
 no_std_io2 = "0.9.0"
 derive_more = { version = "2.0.1", default-features = false, features = ["full"] }
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+serde = { version = "1.0.217", default-features = false, features = ["derive", "serde_derive"] }
 
 # Playdate Package Info
 # doc: https://github.com/boozook/playdate/blob/main/support/build/README.md#metadata
