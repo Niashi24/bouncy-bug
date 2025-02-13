@@ -4,8 +4,8 @@ extern crate alloc;
 
 #[macro_use]
 extern crate playdate as pd;
-mod game;
-mod tiled;
+pub mod game;
+pub mod tiled;
 
 use bevy_app::App;
 use pd::display::Display;

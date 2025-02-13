@@ -1,26 +1,29 @@
 ﻿use alloc::format;
 use alloc::string::ToString;
 use core::cell::RefMut;
-use crate::tiled::TiledLoader;
 use bevy_app::{App, Last, Plugin, Startup, Update};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::{Component, IntoSystemConfigs};
 use bevy_ecs::system::{Commands, In, Query, Res, ResMut};
 use bevy_input::ButtonInput;
+use no_std_io2::io::Write;
 use pd::graphics::color::{Color, LCDColorConst};
 use pd::graphics::fill_rect;
 use pd::graphics::text::draw_text;
 use pd::sys::ffi::LCDColor;
+use bevy_playdate::file::{BufferedWriter, FileHandle};
 use bevy_playdate::input::PlaydateButton;
 use bevy_playdate::jobs::{JobHandle, JobStatusRef, Jobs, JobsScheduler, WorkResult};
 use bevy_playdate::sprite::Sprite;
 use bevy_playdate::time::RunningTimer;
+use crate::tiled::loader::TiledLoader;
 
 pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, test_spawn_job);
+        app.add_systems(Startup, draw_test);
         // app.add_systems(Update, draw_text_test);
         app.add_systems(Last, (control_job, display_job).chain().after(Jobs::run_jobs_system));
     }
@@ -127,11 +130,14 @@ fn test_job(counter: In<TestJob>) -> WorkResult<TestJob, (), ()> {
 fn draw_test(mut loader: TiledLoader, mut commands: Commands) {
     // Loader::with_reader()
     // commands.
-    // let tileset = loader.load_tsx_tileset("tiled/tiles.tsx").unwrap();
+    let tileset = loader.loader().load_tsx_tileset("tiled/tiles.tsx").unwrap();
     // // println!("{:?}", tileset);
     
-    // let mut file = FileHandle::write_only("test.txt", false).unwrap();
-    // // let mut x = BufWriter::<_, 1000>::new(file);
+    let mut file = FileHandle::write_only("test.txt", false).unwrap();
+    let mut writer = BufferedWriter::<_, 1024>::new(file);
+    writer.write_fmt(format_args!("{:?}", tileset)).unwrap();
+    println!("wrote tilemap to file")
+    // let mut x = BufWriter::<_, 1000>::new(file);
     // let out = format!("{:?}", tileset);
     // file.write(out.as_bytes()).unwrap();
     
