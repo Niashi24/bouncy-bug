@@ -3,5 +3,5 @@
 Cargo.lock
 /.sentry-native
 
-bevy_playdate/Cargo.toml
+bevy_playdate/Cargo.lock
 bevy_playdate/target

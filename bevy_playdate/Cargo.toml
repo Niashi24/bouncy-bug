@@ -1,0 +1,23 @@
+cargo-features = ["edition2024"]
+
+[package]
+name = "bevy_playdate"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy_playdate_macros = { path = "bevy_playdate_macros" }
+playdate = { git = "https://github.com/boozook/playdate", rev = "66da849" }
+bevy_ecs = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy_reflect"] }
+bevy_app = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy_reflect"] }
+bevy_platform_support = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["alloc", "portable-atomic"] }
+bevy_transform = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["libm", "alloc", "bevy-support"] }
+bevy_reflect = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy"]}
+bevy_state = { git = "https://github.com/bevyengine/bevy", default-features = false }
+bevy_time = { git = "https://github.com/bevyengine/bevy", default-features = false }
+bevy_input = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["smol_str"] }
+bevy_math = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["libm", "alloc"] }
+portable-atomic-util = { version = "0.2.4" }
+derive_more = { version = "1.0.0", default-features = false, features = ["full"] }
+hashbrown = { version = "0.15.2", default-features = false, features = ["default-hasher"] }
+no_std_io2 = { version = "0.9.0", features = ["alloc"] }
