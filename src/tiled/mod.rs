@@ -5,15 +5,17 @@ use bevy_ecs::reflect::AppTypeRegistry;
 use bevy_ecs::system::{NonSendMut, Res};
 use no_std_io2::io::Write;
 use portable_atomic_util::Arc;
-use tiled::{DefaultResourceCache, Loader, ResourceCache, ResourcePath, Template, Tileset};
+use tiled::{DefaultResourceCache, Loader, Map, ResourceCache, ResourcePath, Template, Tileset};
 use bevy_playdate::asset::AssetCache;
 use bevy_playdate::file::{BufferedWriter, FileHandle};
+use crate::tiled::load::DeserializedMapProperties;
 
 mod io;
 pub mod loader;
 mod export;
 mod types_json;
 mod load;
+pub mod job;
 
 pub struct TiledPlugin;
 
@@ -21,6 +23,11 @@ impl Plugin for TiledPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, export_types);
     }
+}
+
+pub struct TiledMap {
+    pub map: Arc<Map>,
+    pub properties: DeserializedMapProperties,
 }
 
 fn export_types(reg: Res<AppTypeRegistry>) {

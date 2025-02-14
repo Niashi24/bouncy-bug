@@ -146,28 +146,26 @@ impl DeserializedProperties {
                 //     props.push(Box::new(load_cx.loader().with_unknown_type().load(file)));
                 //     continue;
                 // }
-
-                // bevy::log::warn!(
-                //     "error deserializing property: unknown property `{name}`:`{property:?}`"
-                // );
+                
+                println!("error deserializing property: unknown property `{name}`:`{property:?}`");
                 continue;
             };
 
             let Some(reg) = registry.get_with_type_path(property_type) else {
-                // bevy::log::error!("error deserializing property: `{property_type}` is not registered in the TypeRegistry.");
+                println!("error deserializing property: `{property_type}` is not registered in the TypeRegistry.");
                 continue;
             };
 
             if reg.data::<ReflectComponent>().is_none() && reg.data::<ReflectBundle>().is_none() {
                 if reg.data::<ReflectResource>().is_some() {
                     if !resources_allowed {
-                        // bevy::log::warn!(
-                        //     "error deserializing property: Resources are only allowed as map properties"
-                        // );
+                        println!(
+                            "error deserializing property: Resources are only allowed as map properties"
+                        );
                         continue;
                     }
                 } else {
-                    // bevy::log::warn!("error deserializing property: type `{property_type}` is not registered as a Component, Bundle, or Resource");
+                    println!("error deserializing property: type `{property_type}` is not registered as a Component, Bundle, or Resource");
                     continue;
                 }
             }
@@ -177,7 +175,7 @@ impl DeserializedProperties {
                     props.push(prop);
                 }
                 Err(e) => {
-                    // bevy::log::error!("error deserializing property: {e}");
+                    println!("error deserializing property: {e}");
                 }
             }
         }

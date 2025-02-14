@@ -40,6 +40,7 @@ impl JobsScheduler {
         out
     }
     
+    #[must_use]
     pub fn add<Work: Any, Success: Any, Error: Any, M>(
         &mut self,
         priority: isize,

@@ -16,6 +16,7 @@ use bevy_playdate::input::PlaydateButton;
 use bevy_playdate::jobs::{JobHandle, JobStatusRef, Jobs, JobsScheduler, WorkResult};
 use bevy_playdate::sprite::Sprite;
 use bevy_playdate::time::RunningTimer;
+use crate::tiled::job::TiledJobExt;
 use crate::tiled::loader::TiledLoader;
 
 pub struct GamePlugin;
@@ -86,12 +87,14 @@ fn control_job(
     input: Res<ButtonInput<PlaydateButton>>
 ) {
     if input.just_pressed(PlaydateButton::A) {
+        let _ = scheduler.load_tilemap("tiled/test-map.tmx");
         commands.spawn(JobTestComponent {
             job: scheduler.add(1, TestJob(6000), test_job),
         });
     }
     
     if input.just_pressed(PlaydateButton::B) {
+        
         if let Some((e, job)) = q_test.iter().next() {
             jobs.cancel(&job.job);
             commands.entity(e).despawn();

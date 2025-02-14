@@ -554,10 +554,10 @@ fn value_to_json(value: &dyn PartialReflect) -> serde_json::Value {
             })
             .collect(),
         _ => {
-            // warn!(
-            //     "cannot convert type '{}' to a JSON value",
-            //     type_info.type_path()
-            // );
+            println!(
+                "cannot convert type '{}' to a JSON value",
+                type_info.type_path()
+            );
             serde_json::Value::default()
         }
     }
