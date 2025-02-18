@@ -87,7 +87,7 @@ fn control_job(
     input: Res<ButtonInput<PlaydateButton>>
 ) {
     if input.just_pressed(PlaydateButton::A) {
-        let _ = scheduler.load_tilemap("assets/test-map.tmx");
+        // let _ = scheduler.load_tilemap("assets/test-map.tmx");
         commands.spawn(JobTestComponent {
             job: scheduler.add(1, TestJob(6000), test_job),
         });
@@ -133,13 +133,13 @@ fn test_job(counter: In<TestJob>) -> WorkResult<TestJob, (), ()> {
 fn draw_test(mut loader: TiledLoader, mut commands: Commands) {
     // Loader::with_reader()
     // commands.
-    let tileset = loader.loader().load_tsx_tileset("assets/tiles.tsx").unwrap();
-    // // println!("{:?}", tileset);
-    
-    let mut file = FileHandle::write_only("test.txt", false).unwrap();
-    let mut writer = BufferedWriter::<_, 1024>::new(file);
-    writer.write_fmt(format_args!("{:?}", tileset)).unwrap();
-    println!("wrote tilemap to file")
+    // let tileset = loader.load_tmx_map("assets/tiles.tsx").unwrap();
+    // // // println!("{:?}", tileset);
+    // 
+    // let mut file = FileHandle::write_only("test.txt", false).unwrap();
+    // let mut writer = BufferedWriter::<_, 1024>::new(file);
+    // writer.write_fmt(format_args!("{:?}", tileset)).unwrap();
+    // println!("wrote tilemap to file")
     // let mut x = BufWriter::<_, 1000>::new(file);
     // let out = format!("{:?}", tileset);
     // file.write(out.as_bytes()).unwrap();

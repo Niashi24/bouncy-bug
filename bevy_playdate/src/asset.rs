@@ -2,18 +2,19 @@
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use core::any::Any;
+use core::ops::Deref;
 use bevy_app::{App, Plugin};
 use bevy_ecs::prelude::Resource;
 use hashbrown::HashMap;
 use no_std_io2::io::Read;
-use bevy_platform_support::sync::{Arc, Weak};
+use bevy_platform_support::sync::{Arc, LazyLock, Mutex, Weak};
 use crate::file::{BufferedReader, FileHandle};
 
 pub struct AssetPlugin;
 
 impl Plugin for AssetPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<AssetCache>();
+        app.init_resource::<ResAssetCache>();
     }
 }
 
@@ -21,10 +22,21 @@ pub trait Asset: Any + Send + Sync + 'static {
     fn load(reader: impl Read) -> Self;
 }
 
-#[derive(Resource, Default)]
+#[derive(Default)]
 pub struct AssetCache {
     cache: HashMap<Cow<'static, str>, Weak<dyn Any + Send + Sync>>,
 }
+
+#[derive(Resource)]
+pub struct ResAssetCache(pub &'static Mutex<AssetCache>);
+
+impl Default for ResAssetCache {
+    fn default() -> Self {
+        Self(ASSET_CACHE.deref())
+    }
+}
+
+pub static ASSET_CACHE: LazyLock<Mutex<AssetCache>> = LazyLock::new(|| Mutex::default());
 
 // SAFETY: playdate is single threaded
 // unsafe impl Send for AssetCache {}
@@ -42,9 +54,8 @@ impl AssetCache {
         path: impl Into<Cow<'static, str>>,
     ) -> Arc<A> {
         let path = path.into();
-        if let Some(data) = self.cache.get(&path).and_then(|rc| rc.upgrade()) {
-            // todo: pass it up
-            return data.downcast::<A>().unwrap();
+        if let Some(data) = self.get::<A>(&path) {
+            return data;
         }
         
         // todo: pass it up
@@ -60,9 +71,9 @@ impl AssetCache {
     
     /// Insert an asset of the given type into the given path, overwriting any asset currently there.
     ///
-    /// Note that we have to take an extra pointer dereference because of limitations in
-    /// `portable-atomics`'s [`Arc`].
-    pub fn insert<A: Any + Send + Sync>(&mut self, path: impl Into<Cow<'static, str>>, asset: Arc<A>) {
+    /// Use [`insert`] instead if you can, as we have to take an extra pointer dereference 
+    /// because of limitations in `portable-atomics`'s [`Arc`].
+    pub fn insert_arc<A: Any + Send + Sync>(&mut self, path: impl Into<Cow<'static, str>>, asset: Arc<A>) {
         let path = path.into();
         // playdate::println!("inserted \"{}\"", &path);
         
@@ -74,6 +85,16 @@ impl AssetCache {
         
         // A::unsize()
         self.cache.insert(path, Arc::downgrade(&asset));
+    }
+
+    /// Insert an asset of the given type into the given path, overwriting any asset currently there.
+    pub fn insert<A: Any + Send + Sync>(&mut self, path: impl Into<Cow<'static, str>>, asset: A) -> Arc<A> {
+        let path = path.into();
+        let asset: Box<dyn Any + Send + Sync> = Box::new(asset);
+        let asset = Arc::from(asset);
+        self.cache.insert(path, Arc::downgrade(&asset));
+
+        asset.downcast::<A>().unwrap()
     }
     
     /// Gets the asset of the given type if it exists. Panics if the asset at that location is not

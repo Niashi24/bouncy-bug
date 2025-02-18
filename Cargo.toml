@@ -18,10 +18,12 @@ crate-type = [
 [dependencies]
 playdate = { git = "https://github.com/boozook/playdate", rev = "66da849" }
 portable-atomic-util = "0.2.4"
-bevy_ecs = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy_reflect", "portable-atomic"] }
 bevy_app = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy_reflect", "portable-atomic"] }
+bevy_ecs = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy_reflect", "portable-atomic"] }
 bevy_reflect = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy"]}
+bevy_platform_support = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["alloc", "portable-atomic"] }
 bevy_playdate = { path = "bevy_playdate" }
+genawaiter = { git = "https://github.com/Niashi24/genawaiter.git", branch = "no-std", default-features = false }
 hashbrown = { version = "0.15.2", default-features = false, features = ["default-hasher"] }
 bevy_input = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["smol_str"] }
 tiled = { git = "https://github.com/Niashi24/rs-tiled.git", branch = "nostd" }
