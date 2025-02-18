@@ -87,7 +87,7 @@ fn control_job(
     input: Res<ButtonInput<PlaydateButton>>
 ) {
     if input.just_pressed(PlaydateButton::A) {
-        let _ = scheduler.load_tilemap("tiled/test-map.tmx");
+        let _ = scheduler.load_tilemap("test-map.tmx");
         commands.spawn(JobTestComponent {
             job: scheduler.add(1, TestJob(6000), test_job),
         });
@@ -133,7 +133,7 @@ fn test_job(counter: In<TestJob>) -> WorkResult<TestJob, (), ()> {
 fn draw_test(mut loader: TiledLoader, mut commands: Commands) {
     // Loader::with_reader()
     // commands.
-    let tileset = loader.loader().load_tsx_tileset("tiled/tiles.tsx").unwrap();
+    let tileset = loader.loader().load_tsx_tileset("tiles.tsx").unwrap();
     // // println!("{:?}", tileset);
     
     let mut file = FileHandle::write_only("test.txt", false).unwrap();

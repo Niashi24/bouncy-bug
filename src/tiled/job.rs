@@ -23,12 +23,12 @@ fn load_tilemap_job(
     match work {
         TiledLoadStage::LoadTilemap(path) => {
             let map = loader.load_tmx_map(&path).unwrap();
-            println!("finished loading map");
+            // println!("finished loading map");
             WorkResult::Continue(TiledLoadStage::LoadProperties(map))
         }
         TiledLoadStage::LoadProperties(map) => {
             let properties = DeserializedMapProperties::load(&map, registry.0.read().deref());
-            println!("finished deserializing properties");
+            // println!("finished deserializing properties");
             WorkResult::Success(TiledMap {
                 map,
                 properties,

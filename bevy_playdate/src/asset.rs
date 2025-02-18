@@ -64,7 +64,7 @@ impl AssetCache {
     /// `portable-atomics`'s [`Arc`].
     pub fn insert<A: Any + Send + Sync>(&mut self, path: impl Into<Cow<'static, str>>, asset: Arc<A>) {
         let path = path.into();
-        playdate::println!("inserted \"{}\"", &path);
+        // playdate::println!("inserted \"{}\"", &path);
         
         // Arc -> Arc -> data
         // vs
