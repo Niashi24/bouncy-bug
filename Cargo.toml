@@ -50,9 +50,9 @@ launch-sound-path = "sfx/jump"
 # Assets Rules
 # doc: https://github.com/boozook/playdate/blob/main/support/build/README.md#assets
 [package.metadata.playdate.assets]
-"test-map.tmx" = "assets/test-map.export.tmx"
-"tiles.tsx" = "assets/tiles.tsx"
-"tiles.png" = "assets/tiles.png"
+"assets/test-map.tmx" = "assets/test-map.export.tmx"
+"assets/tiles.tsx" = "assets/tiles.tsx"
+"assets/tiles.png" = "assets/tiles.png"
 
 #"img/system/" = "${PLAYDATE_SDK_PATH}/Examples/Game Template/Source/SystemAssets/*.png"
 #"sfx/jump.wav" = "${PLAYDATE_SDK_PATH}/Examples/Level 1-1/Source/sfx/jump.wav"
