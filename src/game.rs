@@ -87,7 +87,7 @@ fn control_job(
     input: Res<ButtonInput<PlaydateButton>>
 ) {
     if input.just_pressed(PlaydateButton::A) {
-        // let _ = scheduler.load_tilemap("assets/test-map.tmx");
+        let _ = scheduler.load_tilemap("assets/test-map.tmx");
         commands.spawn(JobTestComponent {
             job: scheduler.add(1, TestJob(6000), test_job),
         });

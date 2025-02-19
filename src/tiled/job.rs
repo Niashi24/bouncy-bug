@@ -5,7 +5,8 @@ use core::ops::{Deref, DerefMut};
 use bevy_ecs::prelude::In;
 use bevy_ecs::reflect::AppTypeRegistry;
 use bevy_ecs::system::{ParamSet, Res};
-use genawaiter::rc::Co;
+use genawaiter::sync::Co;
+use genawaiter::sync::Gen;
 use portable_atomic_util::Arc;
 use tiled::{Loader, Map, ResourceCache, ResourcePath, Template, Tileset};
 use bevy_playdate::asset::{Asset, AssetCache, ASSET_CACHE};
@@ -112,12 +113,14 @@ pub async fn load_tilemap_job_2(mut co: Co<()>, path: impl Into<Cow<'static, str
 
 pub trait TiledJobExt {
     #[must_use]
-    fn load_tilemap(&mut self, path: impl Into<Cow<'static, str>>) -> JobHandle<TiledLoadStage, TiledMap, &'static str>;
+    fn load_tilemap(&mut self, path: impl Into<Cow<'static, str>>) -> JobHandle<(), Arc<TiledMap>, String>;
 }
 
 impl TiledJobExt for JobsScheduler {
     #[must_use]
-    fn load_tilemap(&mut self, path: impl Into<Cow<'static, str>>) -> JobHandle<TiledLoadStage, TiledMap, &'static str> {
-        self.add(10, TiledLoadStage::LoadTilemap(path.into()), load_tilemap_job)
+    fn load_tilemap(&mut self, path: impl Into<Cow<'static, str>>) -> JobHandle<(), Arc<TiledMap>, String> {
+        // self.add(10, TiledLoadStage::LoadTilemap(path.into()), load_tilemap_job)
+        let path = path.into();
+        self.add_async(0, Gen::new(|co| load_tilemap_job_2(co, path)))
     }
 }

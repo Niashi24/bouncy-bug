@@ -3,7 +3,7 @@ use alloc::collections::BinaryHeap;
 use alloc::vec;
 use alloc::vec::Vec;
 use bevy_ecs::prelude::{In, Local, Mut, Resource};
-use bevy_ecs::system::{BoxedSystem, IntoSystem, SystemId};
+use bevy_ecs::system::{BoxedSystem, IntoSystem, System, SystemId};
 use bevy_ecs::world::World;
 use core::any::Any;
 use core::cmp::Ordering;
@@ -63,6 +63,15 @@ impl JobsScheduler {
             id,
             _phantom_data: Default::default(),
         }
+    }
+    
+    #[must_use]
+    pub fn add_async<S: Any, E: Any>(
+        &mut self,
+        priority: isize,
+        generator: Gen<(), (), impl Future<Output=Result<S, E>> + 'static + Send + Sync>
+    ) -> JobHandle<(), S, E> {
+        self.add(priority, (), new_gen_job(generator))
     }
 }
 
@@ -304,4 +313,16 @@ impl<TWork: Any, TSuccess: Any, TError: Any> From<WorkResult<TWork, TSuccess, TE
             WorkResult::Error(val) => ErasedWorkStatus::Error(Box::new(val)),
         }
     }
+}
+use genawaiter::GeneratorState;
+use genawaiter::sync::Gen;
+
+fn new_gen_job<S: Any, E: Any>(mut generator: Gen<(), (), impl Future<Output=Result<S, E>> + 'static + Send + Sync>) -> impl System<In = In<()>, Out = WorkResult<(), S, E>> {
+    IntoSystem::into_system(move |In(()): In<()>| {
+        match generator.resume_with(()) {
+            GeneratorState::Yielded(()) => WorkResult::Continue(()),
+            GeneratorState::Complete(Ok(ok)) => WorkResult::Success(ok),
+            GeneratorState::Complete(Err(err)) => WorkResult::Error(err),
+        }
+    })
 }
