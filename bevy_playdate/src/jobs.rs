@@ -71,7 +71,7 @@ impl JobsScheduler {
         priority: isize,
         generator: Gen<(), (), impl Future<Output=Result<S, E>> + 'static + Send + Sync>
     ) -> JobHandle<(), S, E> {
-        self.add(priority, (), new_gen_job(generator))
+        self.add(priority, (), new_gen_job_simple(generator))
     }
 }
 
@@ -227,6 +227,13 @@ impl Jobs {
             Some(Err(val)) => Some(Err(*val.downcast().unwrap())),
         }
     }
+    
+    pub fn clear_all(&mut self) {
+        for job in self.jobs.drain() {
+            self.to_cancel.push(job);
+        }
+        self.finished.clear();
+    }
 }
 
 
@@ -315,9 +322,9 @@ impl<TWork: Any, TSuccess: Any, TError: Any> From<WorkResult<TWork, TSuccess, TE
     }
 }
 use genawaiter::GeneratorState;
-use genawaiter::sync::Gen;
+use genawaiter::sync::{Co, Gen};
 
-fn new_gen_job<S: Any, E: Any>(mut generator: Gen<(), (), impl Future<Output=Result<S, E>> + 'static + Send + Sync>) -> impl System<In = In<()>, Out = WorkResult<(), S, E>> {
+fn new_gen_job_simple<S: Any, E: Any>(mut generator: Gen<(), (), impl Future<Output=Result<S, E>> + 'static + Send + Sync>) -> impl System<In = In<()>, Out = WorkResult<(), S, E>> {
     IntoSystem::into_system(move |In(()): In<()>| {
         match generator.resume_with(()) {
             GeneratorState::Yielded(()) => WorkResult::Continue(()),
@@ -326,3 +333,71 @@ fn new_gen_job<S: Any, E: Any>(mut generator: Gen<(), (), impl Future<Output=Res
         }
     })
 }
+
+// pub(crate) enum JobRequest {
+//     WithWorld(Box<dyn FnOnce(&mut World) -> Box<dyn Any + Send>>),
+// }
+// 
+// impl JobRequest {
+//     pub fn fulfill(self, world: &mut World) -> JobResponse {
+//         match self {
+//             JobRequest::WithWorld(f) => JobResponse::WithWorld(f(world)),
+//         }
+//     }
+// }
+// 
+// pub(crate) enum JobResponse {
+//     WithWorld(Box<dyn Any + Send>),
+// }
+
+fn new_gen_job<S: Any, E: Any>(
+    mut generator: Gen<JobRequest, JobResponse, impl Future<Output=Result<S, E>> + 'static + Send + Sync>,
+) -> impl System<In = In<()>, Out = WorkResult<(), S, E>> {
+    IntoSystem::into_system(move |
+        In(()): In<()>,
+        world: &mut World,
+        mut last_message: Local<Option<JobRequest>>,
+    | {
+        // todo: should we yield again after this?
+        let response = last_message.deref_mut().take()
+            .map(|j| j(world))
+            .unwrap_or(Box::new(()));
+        
+        match generator.resume_with(response) {
+            GeneratorState::Yielded(request) => {
+                *last_message = Some(request);
+                WorkResult::Continue(())
+            },
+            GeneratorState::Complete(Ok(ok)) => WorkResult::Success(ok),
+            GeneratorState::Complete(Err(err)) => WorkResult::Error(err),
+        }
+    })
+}
+
+pub trait GenJobExtensions {
+    #[allow(async_fn_in_trait)]
+    async fn with_world<T, F>(&mut self, f: F) -> T
+    where
+        T: Any + Send + 'static,
+        F: FnOnce(&mut World) -> T + Send + 'static;
+}
+
+type JobRequest = Box<dyn FnOnce(&mut World) -> JobResponse + Send>;
+type JobResponse = Box<dyn Any + Send + 'static>;
+
+impl GenJobExtensions for Co<JobRequest, JobResponse> {
+    async fn with_world<T, F>(&mut self, f: F) -> T
+    where
+        T: Any + Send + 'static,
+        F: (FnOnce(&mut World) -> T) + Send + 'static
+    {
+        let request: JobRequest = Box::new(move |world: &mut World| {
+            let result = f(world);
+            Box::new(result)
+        });
+
+        let response = self.yield_(request).await;
+        *response.downcast::<T>().ok().expect("received response should be ")
+    }
+}
+

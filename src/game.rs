@@ -1,30 +1,27 @@
 ﻿use alloc::format;
 use alloc::string::ToString;
-use core::cell::RefMut;
-use bevy_app::{App, Last, Plugin, Startup, Update};
+use bevy_app::{App, Last, Plugin, Startup};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::{Component, IntoSystemConfigs};
 use bevy_ecs::system::{Commands, In, Query, Res, ResMut};
 use bevy_input::ButtonInput;
-use no_std_io2::io::Write;
-use pd::graphics::color::{Color, LCDColorConst};
-use pd::graphics::fill_rect;
-use pd::graphics::text::draw_text;
-use pd::sys::ffi::LCDColor;
-use bevy_playdate::file::{BufferedWriter, FileHandle};
+use bevy_playdate::asset::ResAssetCache;
 use bevy_playdate::input::PlaydateButton;
 use bevy_playdate::jobs::{JobHandle, JobStatusRef, Jobs, JobsScheduler, WorkResult};
 use bevy_playdate::sprite::Sprite;
 use bevy_playdate::time::RunningTimer;
-use crate::tiled::job::TiledJobExt;
-use crate::tiled::loader::TiledLoader;
+use pd::graphics::color::{Color, LCDColorConst};
+use pd::graphics::fill_rect;
+use pd::graphics::text::draw_text;
+use pd::sys::ffi::LCDColor;
+// use crate::tiled::loader::TiledLoader;
 
 pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, test_spawn_job);
-        app.add_systems(Startup, draw_test);
+        // app.add_systems(Startup, draw_test);
         // app.add_systems(Update, draw_text_test);
         app.add_systems(Last, (control_job, display_job).chain().after(Jobs::run_jobs_system));
     }
@@ -84,22 +81,42 @@ fn control_job(
     mut jobs: ResMut<Jobs>,
     mut scheduler: ResMut<JobsScheduler>,
     mut commands: Commands,
-    input: Res<ButtonInput<PlaydateButton>>
+    input: Res<ButtonInput<PlaydateButton>>,
+    asset_cache: Res<ResAssetCache>,
 ) {
     if input.just_pressed(PlaydateButton::A) {
-        let _ = scheduler.load_tilemap("assets/test-map.tmx");
+        // let _ = scheduler.load_tilemap("assets/test-map.tmx");
         commands.spawn(JobTestComponent {
             job: scheduler.add(1, TestJob(6000), test_job),
         });
     }
     
     if input.just_pressed(PlaydateButton::B) {
-        
-        if let Some((e, job)) = q_test.iter().next() {
-            jobs.cancel(&job.job);
+        jobs.clear_all();
+        for (e, _) in q_test.iter() {
             commands.entity(e).despawn();
         }
+        // if let Some((e, job)) = q_test.iter().next() {
+        //     jobs.cancel(&job.job);
+        //     commands.entity(e).despawn();
+        // }
     }
+    
+    if input.just_pressed(PlaydateButton::Down) {
+        asset_cache.0.try_lock().unwrap().debug_loaded();
+    }
+    // let mut file = FileHandle::read_only("assets/test-map.tmx").unwrap();
+    // let mut bytes = Vec::new();
+    // file.read_to_end(&mut bytes).unwrap();
+    // let s = String::from_utf8(bytes).unwrap();
+    // // println!("{s}");
+    // for line in s.lines() {
+    //     println!("{line}");
+    // }
+    // let mut reader = EventReader::new(FileHandle::read_only("assets/test-map.tmx").unwrap());
+    // for event in reader.into_iter() {
+    //     println!("{event:?}");
+    // }
 }
 
 #[derive(Component)]
@@ -130,14 +147,29 @@ fn test_job(counter: In<TestJob>) -> WorkResult<TestJob, (), ()> {
 //     text: String,
 // }
 // 
-fn draw_test(mut loader: TiledLoader, mut commands: Commands) {
+// fn draw_test(mut loader: TiledLoader, mut commands: Commands) {
     // Loader::with_reader()
     // commands.
-    // let tileset = loader.load_tmx_map("assets/tiles.tsx").unwrap();
-    // // // println!("{:?}", tileset);
+    // let mut file = FileHandle::read_only("assets/test-map.tmx").unwrap();
+    // let mut bytes = Vec::new();
+    // file.read_to_end(&mut bytes).unwrap();
+    // let s = String::from_utf8(bytes).unwrap();
+    // // println!("{s}");
+    // for line in s.lines() {
+    //     println!("{line}");
+    // }
+    
+    // let tileset = loader.load_tmx_map("assets/test-map.tmx").unwrap();
+    // println!("{:?}", tileset.tilesets());
+    // loader.0.0.lock().unwrap().debug_loaded();
+    // // // // println!("{:?}", tileset);
+    // println!("{:?}", tileset);
+    // black_box(&tileset);
+    
+    
     // 
     // let mut file = FileHandle::write_only("test.txt", false).unwrap();
-    // let mut writer = BufferedWriter::<_, 1024>::new(file);
+    // let mut writer = BufferedWriter::<_, 512>::new(file);
     // writer.write_fmt(format_args!("{:?}", tileset)).unwrap();
     // println!("wrote tilemap to file")
     // let mut x = BufWriter::<_, 1000>::new(file);
@@ -149,7 +181,7 @@ fn draw_test(mut loader: TiledLoader, mut commands: Commands) {
     // });
     
     // commands.spawn(Sprite::new());
-}
+// }
 
 // fn draw_text_test(
 //     input: Res<CrankInput>,

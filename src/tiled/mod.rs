@@ -4,13 +4,12 @@ use bevy_app::{App, Plugin, Startup};
 use bevy_ecs::reflect::AppTypeRegistry;
 use bevy_ecs::system::{NonSendMut, Res};
 use no_std_io2::io::Write;
-use portable_atomic_util::Arc;
+use bevy_platform_support::sync::Arc;
 use tiled::{DefaultResourceCache, Loader, Map, ResourceCache, ResourcePath, Template, Tileset};
 use bevy_playdate::asset::AssetCache;
 use bevy_playdate::file::{BufferedWriter, FileHandle};
 use crate::tiled::load::DeserializedMapProperties;
 
-mod io;
 pub mod loader;
 mod export;
 mod types_json;

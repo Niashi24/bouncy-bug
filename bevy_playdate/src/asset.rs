@@ -8,6 +8,7 @@ use bevy_ecs::prelude::Resource;
 use hashbrown::HashMap;
 use no_std_io2::io::Read;
 use bevy_platform_support::sync::{Arc, LazyLock, Mutex, Weak};
+use playdate::println;
 use crate::file::{BufferedReader, FileHandle};
 
 pub struct AssetPlugin;
@@ -47,7 +48,7 @@ impl AssetCache {
     /// If the asset has already been loaded and is still in use, returns a cloned Rc of that asset.
     ///
     /// The cache uses a [`Weak`] as it's storage so assets not in use will be discarded.
-    /// If you are wanting to preload some assets, hold an extra Rc somewhere.
+    /// If you are wanting to preload some assets, hold an extra Arc somewhere.
     #[must_use]
     pub fn load<A: Asset>(
         &mut self,
@@ -68,24 +69,6 @@ impl AssetCache {
         
         asset.downcast::<A>().unwrap()
     }
-    
-    /// Insert an asset of the given type into the given path, overwriting any asset currently there.
-    ///
-    /// Use [`insert`] instead if you can, as we have to take an extra pointer dereference 
-    /// because of limitations in `portable-atomics`'s [`Arc`].
-    pub fn insert_arc<A: Any + Send + Sync>(&mut self, path: impl Into<Cow<'static, str>>, asset: Arc<A>) {
-        let path = path.into();
-        // playdate::println!("inserted \"{}\"", &path);
-        
-        // Arc -> Arc -> data
-        // vs
-        // Arc -> data
-        let asset: Box<dyn Any + Send + Sync> = Box::new(asset);
-        let asset: Arc<dyn Any + Send + Sync> = Arc::from(asset);
-        
-        // A::unsize()
-        self.cache.insert(path, Arc::downgrade(&asset));
-    }
 
     /// Insert an asset of the given type into the given path, overwriting any asset currently there.
     pub fn insert<A: Any + Send + Sync>(&mut self, path: impl Into<Cow<'static, str>>, asset: A) -> Arc<A> {
@@ -103,6 +86,17 @@ impl AssetCache {
         self.cache.get(path)
             .and_then(Weak::upgrade)
             .map(|x| x.downcast::<A>().unwrap())
+    }
+    
+    pub fn debug_loaded(&self) {
+        println!("asset cache contains:");
+        for (name, item) in &self.cache {
+            if let Some(_) = item.upgrade() {
+                println!("  {name}");
+            } else {
+                println!("  {name} (unloaded)");
+            }
+        }
     }
     
     /// Clears any entries in the cache to unloaded assets.

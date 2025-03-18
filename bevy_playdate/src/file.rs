@@ -6,7 +6,7 @@ use core::ffi::c_void;
 
 use no_std_io2::io;
 use no_std_io2::io::{Read, Seek, SeekFrom, Write};
-use playdate::sys as playdate_sys;
+use playdate::{println, sys as playdate_sys};
 use playdate::sys::ffi::{FileOptions, SDFile};
 
 pub struct FileHandle {
@@ -82,6 +82,7 @@ impl Read for FileHandle {
                 buf.len() as u32,
             )
         };
+        // println!("read: {}", result);
         if result < 0 {
             Err(io::Error::new(io::ErrorKind::Other, "Read error"))
         } else {

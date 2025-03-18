@@ -220,6 +220,10 @@ impl FpsLines {
             self.frames.pop_front();
         }
         
+        if delta > Duration::from_millis(20) {
+            println!("spike: {:.2}ms ({:.1} frame(s) lost)", delta.as_secs_f32() * 1000.0, delta.as_secs_f32() / 0.02);
+        }
+        
         self.frames.push_back(delta);
     }
     
