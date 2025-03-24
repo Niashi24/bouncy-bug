@@ -1,10 +1,9 @@
-use bevy_ecs::schedule::IntoSystemConfigs;
+use bevy_ecs::schedule::IntoScheduleConfigs;
 use crate::angle::PDAngle;
 use alloc::rc::Rc;
 use alloc::vec::Vec;
 use bevy_app::{App, Plugin, PostUpdate};
 use bevy_ecs::component::{Component, HookContext};
-use bevy_ecs::prelude::require;
 use bevy_ecs::schedule::ScheduleLabel;
 use bevy_ecs::world::{DeferredWorld, World};
 use bevy_transform::prelude::Transform;

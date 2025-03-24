@@ -2,7 +2,7 @@ use bevy_app::{App, Plugin, PreUpdate};
 use bevy_ecs::change_detection::DetectChangesMut;
 use bevy_ecs::reflect::ReflectResource;
 use bevy_ecs::resource::Resource;
-use bevy_ecs::schedule::{IntoSystemConfigs, SystemSet};
+use bevy_ecs::schedule::{IntoScheduleConfigs, SystemSet};
 use bevy_ecs::system::{NonSend, ResMut};
 use bevy_input::ButtonInput;
 use bevy_reflect::prelude::{Reflect, ReflectDefault};

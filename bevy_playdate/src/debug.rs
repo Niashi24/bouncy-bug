@@ -1,7 +1,7 @@
 use alloc::collections::VecDeque;
 use core::time::Duration;
 use bevy_app::{App, Last, Plugin, PostUpdate};
-use bevy_ecs::prelude::{IntoSystemConfigs, Resource};
+use bevy_ecs::prelude::{IntoScheduleConfigs, Resource};
 use bevy_ecs::system::{Res, ResMut};
 use bevy_input::ButtonInput;
 use bevy_math::IVec2;

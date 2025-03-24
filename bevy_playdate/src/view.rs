@@ -16,7 +16,7 @@ impl Plugin for ViewPlugin {
         app.add_systems(
             PostUpdate,
             view_system
-                .after(bevy_transform::systems::propagate_transforms)
+                .after(bevy_transform::systems::propagate_parent_transforms)
                 .after(bevy_transform::systems::sync_simple_transforms)
                 .before(draw_sprites),
         );

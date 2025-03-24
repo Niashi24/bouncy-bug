@@ -1,7 +1,7 @@
 use crate::debug::in_debug;
 use alloc::format;
 use bevy_app::{App, First, FixedUpdate, Plugin, PostUpdate};
-use bevy_ecs::prelude::{IntoSystemConfigs, ResMut, Resource};
+use bevy_ecs::prelude::{IntoScheduleConfigs, ResMut, Resource};
 use bevy_ecs::system::Res;
 use bevy_platform_support::time::Instant;
 use bevy_time::{Time, TimePlugin};

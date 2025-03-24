@@ -2,7 +2,7 @@
 use alloc::string::ToString;
 use bevy_app::{App, Last, Plugin, Startup};
 use bevy_ecs::entity::Entity;
-use bevy_ecs::prelude::{Component, IntoSystemConfigs};
+use bevy_ecs::prelude::{Component, IntoScheduleConfigs};
 use bevy_ecs::system::{Commands, In, Query, Res, ResMut};
 use bevy_input::ButtonInput;
 use bevy_playdate::asset::ResAssetCache;
