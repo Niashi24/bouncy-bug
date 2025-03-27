@@ -1,5 +1,5 @@
-﻿cargo-features = ["edition2024"]
+cargo-features = ["edition2024"]
 
 [workspace]
-members = ["bevy_playdate", "game"]
+members = ["bevy_playdate", "editor", "game"]
 resolver = "3"

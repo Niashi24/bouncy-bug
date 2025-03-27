@@ -74,7 +74,3 @@ dependencies = true    # allow to build assets for dependencies (default is `tru
 overwrite = true       # overwrite existing (default is `true`)
 method = "link"        # "copy" or "link"   (default is `link`)
 follow-symlinks = true # follow symlinks    (default is `true`)
-
-[patch.crates-io]
-fixedbitset = { git = "https://github.com/Niashi24/fixedbitset.git", branch = "no_simd" }
-#playdate = { git = "https://github.com/boozook/playdate", rev = "66da849"}
