@@ -1,5 +1,9 @@
 cargo-features = ["edition2024"]
 
 [workspace]
-members = ["bevy_playdate", "editor", "game"]
+members = ["bevy_playdate", "diagnostic", "editor", "game", "tiledpd"]
 resolver = "3"
+
+
+[patch.crates-io]
+fixedbitset = { git = "https://github.com/Niashi24/fixedbitset.git", branch = "no_simd" }

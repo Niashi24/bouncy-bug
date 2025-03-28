@@ -19,6 +19,7 @@ bevy_ecs = { git = "https://github.com/bevyengine/bevy", default-features = fals
 bevy_reflect = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["glam", "smol_str", "smallvec"] }
 bevy_platform_support = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["alloc"] }
 bevy_playdate = { path = "../bevy_playdate" }
+diagnostic = { path = "../diagnostic", features = ["pd"] }
 genawaiter = { git = "https://github.com/Niashi24/genawaiter.git", branch = "no-std", default-features = false }
 hashbrown = { version = "0.15.2", default-features = false, features = ["default-hasher"] }
 bevy_input = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["smol_str"] }

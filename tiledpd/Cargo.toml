@@ -1,9 +1,9 @@
 cargo-features = ["edition2024"]
 
 [package]
-name = "editor"
+name = "tiledpd"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-toml_edit = "0.22.24"
+
