@@ -6,4 +6,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-
+hashbrown = { version = "0.15.2", features = ["serde"] }
+#serde = { version = "1.0.219", default-features = false, features = ["alloc", "derive"] }
+rkyv = { version = "0.8.10", default-features = false, features = ["alloc", "little_endian", "hashbrown-0_15", "bytecheck"] }
+bitcode = { version = "0.6.6", default-features = false, features = ["derive"] }
+serde = { version = "1.0.219", default-features = false, features = ["derive", "alloc"] }

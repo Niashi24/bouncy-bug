@@ -652,7 +652,7 @@ fn hydrate(object: &mut dyn PartialReflect, obj_entity_map: &HashMap<u32, Entity
 // 
 //     #[test]
 //     fn print_all_properties() {
-//         let map = tiled::Loader::new()
+//         let map = pdtiled::Loader::new()
 //             .load_tmx_map("assets/hex_map_pointy_top_odd.tmx")
 //             .unwrap();
 //         println!("Found map: {:?}", map.properties);

@@ -7,3 +7,7 @@ edition = "2024"
 
 [dependencies]
 toml_edit = "0.22.24"
+tiled = "0.14.0"
+tiledpd = { path = "../tiledpd" }
+lz4_flex = { version = "0.11", default-features = false }
+image = "0.25.6"

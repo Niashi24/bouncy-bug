@@ -14,7 +14,7 @@ use pd::graphics::color::{Color, LCDColorConst};
 use pd::graphics::fill_rect;
 use pd::graphics::text::draw_text;
 use pd::sys::ffi::LCDColor;
-// use crate::tiled::loader::TiledLoader;
+// use crate::pdtiled::loader::TiledLoader;
 
 pub struct GamePlugin;
 
