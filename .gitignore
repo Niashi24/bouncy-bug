@@ -4,5 +4,7 @@
 Cargo.lock
 /.sentry-native
 
+assets/export
+
 bevy_playdate/Cargo.lock
 bevy_playdate/target

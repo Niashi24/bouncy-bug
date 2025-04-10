@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.11.0" orientation="orthogonal" renderorder="right-down" width="25" height="15" tilewidth="16" tileheight="16" infinite="0" nextlayerid="4" nextobjectid="6">
- <editorsettings>
-  <export target="test-map.export.tmx" format="tmx"/>
- </editorsettings>
  <tileset firstgid="1" source="tiles.tsx"/>
  <layer id="1" name="Tile Layer 1" width="25" height="15">
   <data encoding="csv">
-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+1,536870915,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 2,2,3,0,0,0,0,0,0,0,3758096387,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 2,0,3,3,0,0,0,2,2,1073741827,0,0,0,2,2,2,2,2,2,2,2,0,0,0,0,
@@ -36,9 +33,10 @@
     <property name="tile" type="int" value="417"/>
    </properties>
   </object>
-  <object id="4" gid="3" x="270.169" y="29.1268" width="16" height="16"/>
+  <object id="4" gid="3" x="270.169" y="29.1268" width="16" height="16">
+   <properties>
+    <property name="tile" type="int" value="413"/>
+   </properties>
+  </object>
  </objectgroup>
- <imagelayer id="3" name="Image Layer 1" offsetx="94.9939" offsety="-28.5564">
-  <image source="tiles.png" width="32" height="32"/>
- </imagelayer>
 </map>

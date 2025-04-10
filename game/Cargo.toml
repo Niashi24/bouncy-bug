@@ -37,7 +37,7 @@ name = "Bouncy Bug"
 author = "Niashi"
 version = "0.1.0"
 bundle-id = "com.niashi.bouncybug"
-build-number = 3
+build-number = 37
 description = "TODO: Description for the Bouncy Bug game."
 
 #content-warning = "This game contains mild realistic, violence and bloodshed."
@@ -46,12 +46,11 @@ description = "TODO: Description for the Bouncy Bug game."
 image-path = "img/system"
 launch-sound-path = "sfx/jump"
 
-# Assets Rules
-# doc: https://github.com/boozook/playdate/blob/main/support/build/README.md#assets
 [package.metadata.playdate.assets]
-"assets/test-map.tmx" = "../assets/test-map.export.tmx"
-"assets/tiles.tsx" = "../assets/tiles.tsx"
-"assets/tiles.png" = "../assets/tiles.png"
+"assets/test-map.tmb" = "../assets/export/test-map.tmb"
+"assets/test-map-layer-1.png" = "../assets/export/test-map-layer-1.png"
+"assets/tiles.tsb" = "../assets/export/tiles.tsb"
+"assets/tiles.png" = "../assets/export/tiles.png"
 
 #"img/system/" = "${PLAYDATE_SDK_PATH}/Examples/Game Template/Source/SystemAssets/*.png"
 #"sfx/jump.wav" = "${PLAYDATE_SDK_PATH}/Examples/Level 1-1/Source/sfx/jump.wav"

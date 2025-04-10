@@ -2,6 +2,9 @@
 use alloc::vec::Vec;
 use core::num::NonZeroU8;
 use rkyv::{Archive, Deserialize, Portable, Serialize};
+use bytecheck::CheckBytes;
+use hashbrown::HashSet;
+use crate::dependencies::AddDependencies;
 use crate::properties::Properties;
 
 #[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
@@ -10,6 +13,16 @@ pub struct Tilemap {
     pub tilesets: Vec<String>,
     pub layers: Vec<Layer>,
     pub properties: Properties,
+}
+
+impl AddDependencies for ArchivedTilemap {
+    fn add_dependencies<'a: 'b, 'b>(&'a self, dependencies: &mut HashSet<&'b str>) {
+        dependencies.extend(self.tilesets.iter().map(|s| s.as_str()));
+        for layer in self.layers.iter() {
+            layer.add_dependencies(dependencies);
+        }
+        self.properties.add_dependencies(dependencies);
+    }
 }
 
 #[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
@@ -21,6 +34,13 @@ pub struct Layer {
     pub properties: Properties,
 }
 
+impl AddDependencies for ArchivedLayer {
+    fn add_dependencies<'a: 'b, 'b>(&'a self, dependencies: &mut HashSet<&'b str>) {
+        self.layer_data.add_dependencies(dependencies);
+        self.properties.add_dependencies(dependencies);
+    }
+}
+
 #[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
 #[rkyv(derive(Debug))]
 pub enum LayerData {
@@ -30,10 +50,28 @@ pub enum LayerData {
     // Group Layer
 }
 
+impl AddDependencies for ArchivedLayerData {
+    fn add_dependencies<'a: 'b, 'b>(&'a self, dependencies: &mut HashSet<&'b str>) {
+        match self {
+            ArchivedLayerData::TileLayer(layer) => layer.add_dependencies(dependencies),
+            ArchivedLayerData::ObjectLayer(layer) => layer.add_dependencies(dependencies),
+            ArchivedLayerData::ImageLayer(layer) => layer.add_dependencies(dependencies),
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
 #[rkyv(derive(Debug))]
 pub struct ObjectLayer {
     pub objects: Vec<ObjectData>,
+}
+
+impl AddDependencies for ArchivedObjectLayer {
+    fn add_dependencies<'a: 'b, 'b>(&'a self, dependencies: &mut HashSet<&'b str>) {
+        for object in self.objects.iter() {
+            object.add_dependencies(dependencies);
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
@@ -46,6 +84,12 @@ pub struct ObjectData {
     pub y: f32,
     pub visible: bool,
     pub properties: Properties,
+}
+
+impl AddDependencies for ArchivedObjectData {
+    fn add_dependencies<'a: 'b, 'b>(&'a self, dependencies: &mut HashSet<&'b str>) {
+        self.properties.add_dependencies(dependencies);
+    }
 }
 
 #[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
@@ -80,6 +124,12 @@ pub struct ImageLayer {
     pub height: i32,
 }
 
+impl AddDependencies for ArchivedImageLayer {
+    fn add_dependencies<'a: 'b, 'b>(&'a self, dependencies: &mut HashSet<&'b str>) {
+        dependencies.insert(&self.source);
+    }
+}
+
 #[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
 #[repr(C)]
 #[rkyv(derive(Debug))]
@@ -87,6 +137,18 @@ pub struct TileLayer {
     pub width: u32,
     pub height: u32,
     pub tiles: Vec<Option<Tile>>,
+    /// Optional, pre-baked image for layer.
+    /// If `Some`, it will use the image as a single sprite on the Layer entity.
+    /// If `None`, it will create a sprite on each tile entity. 
+    pub image: Option<String>,
+}
+
+impl AddDependencies for ArchivedTileLayer {
+    fn add_dependencies<'a: 'b, 'b>(&'a self, dependencies: &mut HashSet<&'b str>) {
+        if let Some(image) = self.image.as_ref() {
+            dependencies.insert(image);
+        }
+    }
 }
 
 // TODO: Pack this into a single integer?
@@ -99,9 +161,9 @@ pub struct TileLayer {
 //     pub tile_idx: usize,
 // }
 
-#[derive(Copy, Clone, Eq, PartialEq, Archive, Deserialize, Serialize, Portable)]
+#[derive(Copy, Clone, Eq, PartialEq, Archive, Deserialize, Serialize, Portable, CheckBytes)]
 #[repr(C)]
-#[rkyv(derive(Debug))]
+#[rkyv(as = Tile)]
 pub struct Tile {
     /// Id of tile in tilemap.
     pub tile_id: u8,

@@ -9,12 +9,23 @@
     ],
     "file.lastUsedOpenFilter": "All Files (*)",
     "fileStates": {
-        "test-map.export.tmx": {
-            "scale": 2.4225,
+        "test-map.edit.tmx": {
+            "expandedObjectLayers": [
+                2
+            ],
+            "scale": 3.4487,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 339.7316821465429,
-                "y": 137.46130030959753
+                "x": 128.45420013338358,
+                "y": 77.4204772812944
+            }
+        },
+        "test-map.export.tmx": {
+            "scale": 5.5,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 134.36363636363637,
+                "y": 24.72727272727272
             }
         },
         "test-map.export.tmx#tiles": {
@@ -49,8 +60,9 @@
         "test-map.export.tmx"
     ],
     "project": "bouncy_bug.tiled-project",
-    "property.type": "int",
+    "property.type": "file",
     "recentFiles": [
+        "test-map.edit.tmx",
         "test-map.tmx",
         "test-map.export.tmx",
         "tiles.tsx"

@@ -1,7 +1,11 @@
 ﻿use alloc::string::String;
+use alloc::vec::Vec;
 use core::fmt::Debug;
-use hashbrown::HashMap;
+use hashbrown::{HashMap, HashSet};
 use rkyv::{Archive, Deserialize, Serialize};
+use rkyv::collections::swiss_table::ArchivedHashMap;
+use rkyv::string::ArchivedString;
+use crate::dependencies::AddDependencies;
 
 /// Represents a custom property's value.
 ///
@@ -39,25 +43,27 @@ pub enum PropertyValue {
     },
 }
 
-// impl Debug for ArchivedPropertyValue {
-//     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-//         match self {
-//             ArchivedPropertyValue::BoolValue(b) => f.debug_tuple("ArchivedPropertyValue")
-//                 .field(b)
-//                 .finish(),
-//             ArchivedPropertyValue::FloatValue(_) => {}
-//             ArchivedPropertyValue::IntValue(_) => {}
-//             ArchivedPropertyValue::StringValue(_) => {}
-//             ArchivedPropertyValue::FileValue(_) => {}
-//             ArchivedPropertyValue::ObjectValue(_) => {}
-//             ArchivedPropertyValue::ClassValue { .. } => {}
-//         }
-//     }
-// }
+impl AddDependencies for ArchivedPropertyValue {
+    fn add_dependencies<'a: 'b, 'b>(&'a self, dependencies: &mut HashSet<&'b str>) {
+        match self {
+            ArchivedPropertyValue::FileValue(file) => { dependencies.insert(file); },
+            ArchivedPropertyValue::ClassValue { properties, .. } => properties.add_dependencies(dependencies),
+            _ => {}
+        }
+    }
+}
 
+impl AddDependencies for ArchivedProperties {
+    fn add_dependencies<'a: 'b, 'b>(&'a self, dependencies: &mut HashSet<&'b str>) {
+        for property in self.values() {
+            property.add_dependencies(dependencies);
+        }
+    }
+}
 
 /// A custom property container.
 pub type Properties = HashMap<String, PropertyValue>;
+pub type ArchivedProperties = ArchivedHashMap<ArchivedString, ArchivedPropertyValue>;
 
 #[cfg(test)]
 mod test {
