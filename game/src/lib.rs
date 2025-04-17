@@ -6,10 +6,9 @@ extern crate alloc;
 extern crate playdate as pd;
 pub mod game;
 pub mod tiled;
+pub mod rkyv;
 
-use core::mem::MaybeUninit;
 use bevy_app::App;
-use bevy_ecs::reflect::AppTypeRegistry;
 use pd::display::Display;
 use bevy_playdate::DefaultPlugins;
 use crate::game::GamePlugin;

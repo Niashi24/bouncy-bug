@@ -14,6 +14,7 @@ use pd::graphics::color::{Color, LCDColorConst};
 use pd::graphics::fill_rect;
 use pd::graphics::text::draw_text;
 use pd::sys::ffi::LCDColor;
+use crate::tiled::{Map, TiledMap, TiledSet};
 // use crate::pdtiled::loader::TiledLoader;
 
 pub struct GamePlugin;
@@ -85,7 +86,7 @@ fn control_job(
     asset_cache: Res<ResAssetCache>,
 ) {
     if input.just_pressed(PlaydateButton::A) {
-        // let _ = scheduler.load_tilemap("assets/test-map.tmx");
+        let _ = scheduler.load_asset::<Map>(0, "assets/test-map.tmb");
         commands.spawn(JobTestComponent {
             job: scheduler.add(1, TestJob(6000), test_job),
         });
@@ -103,7 +104,7 @@ fn control_job(
     }
     
     if input.just_pressed(PlaydateButton::Down) {
-        asset_cache.0.try_lock().unwrap().debug_loaded();
+        asset_cache.0.try_read().unwrap().debug_loaded();
     }
     // let mut file = FileHandle::read_only("assets/test-map.tmx").unwrap();
     // let mut bytes = Vec::new();

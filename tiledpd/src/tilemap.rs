@@ -28,6 +28,7 @@ impl AddDependencies for ArchivedTilemap {
 #[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
 #[rkyv(derive(Debug))]
 pub struct Layer {
+    pub id: u32,
     pub x: f32,
     pub y: f32,
     pub layer_data: LayerData,
@@ -180,6 +181,8 @@ pub struct Tile {
 }
 
 impl Tile {
+    pub const NONE: Option<Self> = unsafe { core::mem::transmute(0i16) };
+    
     pub fn new(tile_id: u8, flip_x: bool, flip_y: bool, flip_d: bool, tilemap_idx: u8) -> Self {
         assert!(tilemap_idx < 16, "tilemap index must be in 0..16");
 

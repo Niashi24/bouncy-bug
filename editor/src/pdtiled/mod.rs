@@ -1,13 +1,12 @@
-﻿use std::ffi::{OsStr, OsString};
-use std::ops::Deref;
-use std::path::{Path, PathBuf};
+﻿use crate::ASSET_PATH;
 use image::{GenericImageView, RgbaImage};
+use std::ops::Deref;
+use std::path::PathBuf;
 use tiled::{FiniteTileLayer, Layer, LayerTile, LayerTileData, LayerType, Object, PropertyValue, TileLayer, TilesetLocation};
-use tiledpd::tilemap::{ImageLayer, Layer as LayerPD, LayerData, ObjectData, ObjectLayer, ObjectShape, Tile};
 use tiledpd::properties::PropertyValue as PVPD;
 use tiledpd::tilemap::Tilemap;
+use tiledpd::tilemap::{ImageLayer, Layer as LayerPD, LayerData, ObjectData, ObjectLayer, ObjectShape, Tile};
 use tiledpd::tileset::{TileData, Tileset};
-use crate::{ASSET_PATH, EXPORT_FOLDER};
 
 pub const TILEMAP_BINARY_EXT: &str = "tmb";
 pub const TILESET_BINARY_EXT: &str = "tsb";
@@ -39,9 +38,10 @@ pub fn convert_map(map: tiled::Map) -> Tilemap {
 
 pub fn convert_layer(layer: Layer) -> LayerPD {
     let data = layer.deref().clone();
-    let layer_data = convert_layer_data(layer, layer.id());
+    let layer_data = convert_layer_data(layer);
     
     LayerPD {
+        id: layer.id(),
         x: data.offset_x,
         y: data.offset_y,
         layer_data,
@@ -49,7 +49,7 @@ pub fn convert_layer(layer: Layer) -> LayerPD {
     }
 }
 
-pub fn convert_layer_data(main_layer: Layer, id: u32) -> LayerData {
+pub fn convert_layer_data(main_layer: Layer) -> LayerData {
     match main_layer.layer_type() {
         LayerType::Image(layer) => {
             let Some(image) = layer.image.clone() else {
@@ -71,8 +71,10 @@ pub fn convert_layer_data(main_layer: Layer, id: u32) -> LayerData {
                     let mut tiles = Vec::with_capacity((layer.width() * layer.height()) as usize);
                     for y in 0..layer.height() {
                         for x in 0..layer.width() {
-                            let tile = layer.get_tile_data(x as i32, y as i32);
-                            let tile = tile.map(|x| convert_tile(*x));
+                            let mut tile = Tile::NONE;
+                            if let Some(t) = layer.get_tile_data(x as i32, y as i32) {
+                                tile = Some(convert_tile(*t));
+                            }
                             tiles.push(tile);
                         }
                     }

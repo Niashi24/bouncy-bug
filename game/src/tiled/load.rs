@@ -9,19 +9,23 @@ use bevy_ecs::reflect::{ReflectBundle, ReflectResource};
 use bevy_reflect::{DynamicArray, DynamicEnum, DynamicStruct, DynamicTuple, DynamicTupleStruct, DynamicVariant, FromReflect, NamedField, PartialReflect, Reflect, ReflectMut, ReflectRef, TypeInfo, TypeRegistration, TypeRegistry, UnnamedField, VariantInfo, VariantType};
 use bevy_reflect::prelude::ReflectDefault;
 use hashbrown::HashMap;
-use tiled::{LayerType, Properties, PropertyValue, TileId};
+use tiledpd::properties::{ArchivedProperties, ArchivedPropertyValue};
+use tiledpd::tilemap::{ArchivedLayerData, ArchivedTilemap};
+// use tiled::{LayerType, Properties, PropertyValue, TileId};
+
+type TileId = u32;
 
 #[derive(Debug, Clone)]
-pub(crate) struct DeserializedMapProperties<const HYDRATED: bool = false> {
-    pub(crate) map: DeserializedProperties,
-    pub(crate) layers: HashMap<u32, DeserializedProperties>,
-    pub(crate) tiles: HashMap<String, HashMap<TileId, DeserializedProperties>>,
-    pub(crate) objects: HashMap<u32, DeserializedProperties>,
+pub struct DeserializedMapProperties<const HYDRATED: bool = false> {
+    pub map: DeserializedProperties,
+    pub layers: HashMap<u32, DeserializedProperties>,
+    // pub(crate) tiles: HashMap<String, HashMap<TileId, DeserializedProperties>>,
+    pub objects: HashMap<u32, DeserializedProperties>,
 }
 
 impl DeserializedMapProperties<false> {
     pub(crate) fn load(
-        map: &tiled::Map,
+        map: &ArchivedTilemap,
         registry: &TypeRegistry,
         // load_context: &mut LoadContext<'_>,
     ) -> Self {
@@ -29,17 +33,18 @@ impl DeserializedMapProperties<false> {
 
         let mut objects = HashMap::new();
         let mut layers = HashMap::new();
-        let mut to_process = Vec::from_iter(map.layers());
+        let mut to_process = Vec::from_iter(map.layers.iter());
         while let Some(layer) = to_process.pop() {
+            // layer.
             layers.insert(
-                layer.id(),
+                layer.id.to_native(),
                 DeserializedProperties::load(&layer.properties, registry, (), false),
             );
-            match layer.layer_type() {
-                LayerType::Objects(object) => {
-                    for object in object.objects() {
+            match &layer.layer_data {
+                ArchivedLayerData::ObjectLayer(object) => {
+                    for object in object.objects.iter() {
                         objects.insert(
-                            object.id(),
+                            object.id.to_native(),
                             DeserializedProperties::load(
                                 &object.properties,
                                 registry,
@@ -49,40 +54,40 @@ impl DeserializedMapProperties<false> {
                         );
                     }
                 }
-                LayerType::Group(group) => {
-                    to_process.extend(group.layers());
-                }
-                _ => {}
+                // ArchivedLayerData::Group(group) => {
+                //     to_process.extend(group.layers());
+                // }
+                ArchivedLayerData::TileLayer(_) | ArchivedLayerData::ImageLayer(_) => {},
             }
         }
 
-        let tiles = map
-            .tilesets()
-            .iter()
-            .map(|s| {
-                (
-                    s.name.clone(),
-                    s.tiles()
-                        .map(|(id, t)| {
-                            (
-                                id,
-                                DeserializedProperties::load(
-                                    &t.properties,
-                                    registry,
-                                    (),
-                                    false,
-                                ),
-                            )
-                        })
-                        .collect(),
-                )
-            })
-            .collect();
+        // let tiles = map
+        //     .tilesets
+        //     .iter()
+        //     .map(|s| {
+        //         (
+        //             s.name.clone(),
+        //             s.tiles()
+        //                 .map(|(id, t)| {
+        //                     (
+        //                         id,
+        //                         DeserializedProperties::load(
+        //                             &t.properties,
+        //                             registry,
+        //                             (),
+        //                             false,
+        //                         ),
+        //                     )
+        //                 })
+        //                 .collect(),
+        //         )
+        //     })
+        //     .collect();
 
         Self {
             map: map_props,
             layers,
-            tiles,
+            // tiles,
             objects,
         }
     }
@@ -98,16 +103,10 @@ impl DeserializedMapProperties<false> {
         for (_, obj) in self.objects.iter_mut() {
             obj.hydrate(entity_map);
         }
-        for (_, tiles) in self.tiles.iter_mut() {
-            for (_, tile) in tiles.iter_mut() {
-                tile.hydrate(entity_map);
-            }
-        }
 
         DeserializedMapProperties::<true> {
             map: self.map,
             layers: self.layers,
-            tiles: self.tiles,
             objects: self.objects,
         }
     }
@@ -115,29 +114,29 @@ impl DeserializedMapProperties<false> {
 
 /// Properties for an entity deserialized from a [`Properties`]
 #[derive(Debug)]
-pub(crate) struct DeserializedProperties {
-    pub(crate) properties: Vec<Box<dyn PartialReflect>>,
+pub struct DeserializedProperties {
+    pub properties: Vec<Box<dyn PartialReflect>>,
 }
 
 impl Clone for DeserializedProperties {
     fn clone(&self) -> Self {
         Self {
-            properties: self.properties.iter().map(|r| r.clone_value()).collect(),
+            properties: self.properties.iter().map(|r| r.to_dynamic()).collect(),
         }
     }
 }
 
 impl DeserializedProperties {
-    fn load(
-        properties: &tiled::Properties,
+    pub fn load(
+        properties: &ArchivedProperties,
         registry: &TypeRegistry,
         load_cx: (),
         resources_allowed: bool,
     ) -> Self {
         let mut props: Vec<Box<dyn PartialReflect>> = Vec::new();
 
-        for (name, property) in properties.clone() {
-            let PropertyValue::ClassValue {
+        for (name, property) in properties.iter() {
+            let ArchivedPropertyValue::ClassValue {
                 property_type,
                 properties: _,
             } = &property
@@ -185,7 +184,7 @@ impl DeserializedProperties {
 
     fn deserialize_named_field(
         field: &NamedField,
-        properties: &mut Properties,
+        properties: &ArchivedProperties,
         registration: &TypeRegistration,
         registry: &TypeRegistry,
         load_cx: &mut Option<()>,
@@ -200,7 +199,7 @@ impl DeserializedProperties {
         }
 
         let value;
-        if let Some(pv) = properties.remove(field.name()) {
+        if let Some(pv) = properties.get(field.name()) {
             let Some(reg) = registry.get(field.type_id()) else {
                 return Err(format!("type `{}` is not registered", field.type_path()));
             };
@@ -223,7 +222,7 @@ impl DeserializedProperties {
 
     fn deserialize_unnamed_field(
         field: &UnnamedField,
-        properties: &mut Properties,
+        properties: &ArchivedProperties,
         registration: &TypeRegistration,
         registry: &TypeRegistry,
         load_cx: &mut Option<()>,
@@ -241,7 +240,7 @@ impl DeserializedProperties {
         }
 
         let value;
-        if let Some(pv) = properties.remove(&field.index().to_string()) {
+        if let Some(pv) = properties.get(field.index().to_string().as_str()) {
             let Some(reg) = registry.get(field.type_id()) else {
                 return Err(format!("type `{}` is not registered", field.type_path()));
             };
@@ -265,7 +264,7 @@ impl DeserializedProperties {
     }
 
     fn deserialize_property(
-        property: PropertyValue,
+        property: &ArchivedPropertyValue,
         registration: &TypeRegistration,
         registry: &TypeRegistry,
         load_cx: &mut Option<()>,
@@ -273,37 +272,37 @@ impl DeserializedProperties {
     ) -> Result<Box<dyn PartialReflect>, String> {
         // I wonder if it's possible to call FromStr for String?
         // or ToString/Display?
-        use PropertyValue as PV;
+        use ArchivedPropertyValue as PV;
         match (
             registration.type_info().type_path(),
             property,
             registration.type_info(),
         ) {
-            ("bool", PV::BoolValue(b), _) => Ok(Box::new(b)),
+            ("bool", PV::BoolValue(b), _) => Ok(Box::new(*b)),
 
-            ("i8", PV::IntValue(i), _) => Ok(Box::new(i8::try_from(i).unwrap())),
-            ("i16", PV::IntValue(i), _) => Ok(Box::new(i16::try_from(i).unwrap())),
-            ("i32", PV::IntValue(i), _) => Ok(Box::new(i)),
-            ("i64", PV::IntValue(i), _) => Ok(Box::new(i as i64)),
-            ("i128", PV::IntValue(i), _) => Ok(Box::new(i as i128)),
-            ("u8", PV::IntValue(i), _) => Ok(Box::new(u8::try_from(i).unwrap())),
-            ("u16", PV::IntValue(i), _) => Ok(Box::new(u16::try_from(i).unwrap())),
-            ("u32", PV::IntValue(i), _) => Ok(Box::new(u32::try_from(i).unwrap())),
-            ("u64", PV::IntValue(i), _) => Ok(Box::new(u64::try_from(i).unwrap())),
-            ("u128", PV::IntValue(i), _) => Ok(Box::new(u128::try_from(i).unwrap())),
+            ("i8", PV::IntValue(i), _) => Ok(Box::new(i8::try_from(i.to_native()).unwrap())),
+            ("i16", PV::IntValue(i), _) => Ok(Box::new(i16::try_from(i.to_native()).unwrap())),
+            ("i32", PV::IntValue(i), _) => Ok(Box::new(i.to_native())),
+            ("i64", PV::IntValue(i), _) => Ok(Box::new(i.to_native() as i64)),
+            ("i128", PV::IntValue(i), _) => Ok(Box::new(i.to_native() as i128)),
+            ("u8", PV::IntValue(i), _) => Ok(Box::new(u8::try_from(i.to_native()).unwrap())),
+            ("u16", PV::IntValue(i), _) => Ok(Box::new(u16::try_from(i.to_native()).unwrap())),
+            ("u32", PV::IntValue(i), _) => Ok(Box::new(u32::try_from(i.to_native()).unwrap())),
+            ("u64", PV::IntValue(i), _) => Ok(Box::new(u64::try_from(i.to_native()).unwrap())),
+            ("u128", PV::IntValue(i), _) => Ok(Box::new(u128::try_from(i.to_native()).unwrap())),
 
-            ("f32", PV::FloatValue(f), _) => Ok(Box::new(f)),
-            ("f64", PV::FloatValue(f), _) => Ok(Box::new(f as f64)),
+            ("f32", PV::FloatValue(f), _) => Ok(Box::new(f.to_native())),
+            ("f64", PV::FloatValue(f), _) => Ok(Box::new(f.to_native() as f64)),
             // Shouldn't need these but it's a backup
-            ("f32", PV::IntValue(i), _) => Ok(Box::new(i as f32)),
-            ("f64", PV::IntValue(i), _) => Ok(Box::new(i as f64)),
+            ("f32", PV::IntValue(i), _) => Ok(Box::new(i.to_native() as f32)),
+            ("f64", PV::IntValue(i), _) => Ok(Box::new(i.to_native() as f64)),
 
             // ("bevy_color::color::Color", PV::ColorValue(c), _) => {
             //     Ok(Box::new(Color::srgba_u8(c.red, c.green, c.blue, c.alpha)))
             // }
-            ("alloc::string::String", PV::StringValue(s), _) => Ok(Box::new(s)),
+            ("alloc::string::String", PV::StringValue(s), _) => Ok(Box::new(s.to_string())),
             ("char", PV::StringValue(s), _) => Ok(Box::new(s.chars().next().unwrap())),
-            ("alloc::string::String", PV::FileValue(s), _) => Ok(Box::new(s)),
+            ("alloc::string::String", PV::FileValue(s), _) => Ok(Box::new(s.to_string())),
             // ("std::path::PathBuf", PV::FileValue(s), _) => Ok(Box::new(PathBuf::from(s))),
             // (a, PV::FileValue(s), _) if a.starts_with("bevy_asset::handle::Handle") => {
             //     if let Some(cx) = load_cx.as_mut() {
@@ -313,6 +312,7 @@ impl DeserializedProperties {
             //     }
             // }
             ("bevy_ecs::entity::Entity", PV::ObjectValue(o), _) => {
+                let o = o.to_native();
                 if o == 0 {
                     Err("empty object reference".to_string())
                 } else {
@@ -320,6 +320,7 @@ impl DeserializedProperties {
                 }
             }
             ("core::option::Option<bevy_ecs::entity::Entity>", PV::ObjectValue(o), _) => {
+                let o = o.to_native();
                 Ok(Box::new(Some(Entity::from_raw(o)).filter(|_| o != 0)))
             }
             (_, PV::StringValue(s), TypeInfo::Enum(info)) => {
@@ -340,7 +341,7 @@ impl DeserializedProperties {
 
                 Ok(Box::new(out))
             }
-            (_, PV::ClassValue { mut properties, .. }, TypeInfo::Struct(info)) => {
+            (_, PV::ClassValue { properties, .. }, TypeInfo::Struct(info)) => {
                 let mut out = DynamicStruct::default();
                 out.set_represented_type(Some(registration.type_info()));
 
@@ -356,7 +357,7 @@ impl DeserializedProperties {
                 for field in info.iter() {
                     let value = Self::deserialize_named_field(
                         field,
-                        &mut properties,
+                        properties,
                         registration,
                         registry,
                         load_cx,
@@ -367,7 +368,7 @@ impl DeserializedProperties {
 
                 Ok(Box::new(out))
             }
-            (_, PV::ClassValue { mut properties, .. }, TypeInfo::TupleStruct(info)) => {
+            (_, PV::ClassValue { properties, .. }, TypeInfo::TupleStruct(info)) => {
                 let mut out = DynamicTupleStruct::default();
                 out.set_represented_type(Some(registration.type_info()));
 
@@ -383,7 +384,7 @@ impl DeserializedProperties {
                 for field in info.iter() {
                     let value = Self::deserialize_unnamed_field(
                         field,
-                        &mut properties,
+                        properties,
                         registration,
                         registry,
                         load_cx,
@@ -394,7 +395,7 @@ impl DeserializedProperties {
 
                 Ok(Box::new(out))
             }
-            (_, PV::ClassValue { mut properties, .. }, TypeInfo::Tuple(info)) => {
+            (_, PV::ClassValue { properties, .. }, TypeInfo::Tuple(info)) => {
                 let mut out = DynamicTuple::default();
                 out.set_represented_type(Some(registration.type_info()));
 
@@ -410,7 +411,7 @@ impl DeserializedProperties {
                 for field in info.iter() {
                     let value = Self::deserialize_unnamed_field(
                         field,
-                        &mut properties,
+                        properties,
                         registration,
                         registry,
                         load_cx,
@@ -421,7 +422,7 @@ impl DeserializedProperties {
 
                 Ok(Box::new(out))
             }
-            (_, PV::ClassValue { mut properties, .. }, TypeInfo::Array(info)) => {
+            (_, PV::ClassValue { properties, .. }, TypeInfo::Array(info)) => {
                 let mut array = Vec::new();
 
                 let Some(reg) = registry.get(info.item_ty().id()) else {
@@ -432,7 +433,7 @@ impl DeserializedProperties {
                 };
 
                 for i in 0..array.capacity() {
-                    let Some(pv) = properties.remove(&format!("[{}]", i)) else {
+                    let Some(pv) = properties.get(format!("[{}]", i).as_str()) else {
                         return Err(format!(
                             "missing property on `{}`: `{}`",
                             info.type_path(),
@@ -451,7 +452,7 @@ impl DeserializedProperties {
 
                 Ok(Box::new(out))
             }
-            (_, PV::ClassValue { mut properties, .. }, TypeInfo::Enum(info)) => {
+            (_, PV::ClassValue { properties, .. }, TypeInfo::Enum(info)) => {
                 let mut out = DynamicEnum::default();
                 out.set_represented_type(Some(registration.type_info()));
 
@@ -464,9 +465,9 @@ impl DeserializedProperties {
                     default_value = Some(tmp.as_ref());
                 }
 
-                if let Some(PV::StringValue(variant_name)) = properties.remove(":variant") {
-                    if let Some(PV::ClassValue { mut properties, .. }) =
-                        properties.remove(&variant_name)
+                if let Some(PV::StringValue(variant_name)) = properties.get(":variant") {
+                    if let Some(PV::ClassValue { properties, .. }) =
+                        properties.get(variant_name)
                     {
                         let variant_out = match info.variant(&variant_name) {
                             Some(VariantInfo::Struct(variant_info)) => {
@@ -474,7 +475,7 @@ impl DeserializedProperties {
                                 for field in variant_info.iter() {
                                     let value = Self::deserialize_named_field(
                                         field,
-                                        &mut properties,
+                                        properties,
                                         registration,
                                         registry,
                                         load_cx,
@@ -490,7 +491,7 @@ impl DeserializedProperties {
                                 for field in variant_info.iter() {
                                     let value = Self::deserialize_unnamed_field(
                                         field,
-                                        &mut properties,
+                                        properties,
                                         registration,
                                         registry,
                                         load_cx,
@@ -510,7 +511,7 @@ impl DeserializedProperties {
                         }?;
                         out.set_variant_with_index(
                             info.index_of(&variant_name).unwrap(),
-                            variant_name,
+                            variant_name.to_string(),
                             variant_out,
                         );
 

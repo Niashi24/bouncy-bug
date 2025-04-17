@@ -6,7 +6,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-playdate-sys = { version = "0.5.5", optional = true }
+playdate-sys = { git = "https://github.com/boozook/playdate", rev = "66da849", optional = true }
 
 [features]
 std = []

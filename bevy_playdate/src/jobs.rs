@@ -1,5 +1,8 @@
+use alloc::borrow::Cow;
 use alloc::boxed::Box;
 use alloc::collections::BinaryHeap;
+use alloc::string::ToString;
+use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 use bevy_ecs::prelude::{In, Local, Mut, Resource};
@@ -8,7 +11,7 @@ use bevy_ecs::world::World;
 use core::any::Any;
 use core::cmp::Ordering;
 use core::marker::PhantomData;
-use core::ops::DerefMut;
+use core::ops::{Deref, DerefMut};
 use bevy_app::{App, Last, Plugin};
 use derive_more::From;
 use hashbrown::HashMap;
@@ -72,6 +75,20 @@ impl JobsScheduler {
         generator: Gen<(), (), impl Future<Output=Result<S, E>> + 'static + Send + Sync>
     ) -> JobHandle<(), S, E> {
         self.add(priority, (), new_gen_job_simple(generator))
+    }
+    
+    #[must_use]
+    pub fn load_asset<A: AssetAsync>(
+        &mut self,
+        priority: isize,
+        path: impl Into<Cow<'static, str>>,
+    ) -> JobHandle<(), Arc<A>, A::Error> {
+        let path = path.into();
+        let job = async move |mut load_ctx: AsyncLoadCtx| {
+            load_ctx.load_asset::<A>(path.into()).await
+        };
+        
+        self.add(priority, (), new_gen_job(Gen::new(job)))
     }
 }
 
@@ -323,6 +340,11 @@ impl<TWork: Any, TSuccess: Any, TError: Any> From<WorkResult<TWork, TSuccess, TE
 }
 use genawaiter::GeneratorState;
 use genawaiter::sync::{Co, Gen};
+use no_std_io2::io::{Error, Read};
+use playdate::println;
+use diagnostic::dbg;
+use crate::asset::{AssetAsync, ResAssetCache};
+use crate::file::FileHandle;
 
 fn new_gen_job_simple<S: Any, E: Any>(mut generator: Gen<(), (), impl Future<Output=Result<S, E>> + 'static + Send + Sync>) -> impl System<In = In<()>, Out = WorkResult<(), S, E>> {
     IntoSystem::into_system(move |In(()): In<()>| {
@@ -350,6 +372,9 @@ fn new_gen_job_simple<S: Any, E: Any>(mut generator: Gen<(), (), impl Future<Out
 //     WithWorld(Box<dyn Any + Send>),
 // }
 
+
+pub type AsyncLoadCtx = Co<JobRequest, JobResponse>;
+
 fn new_gen_job<S: Any, E: Any>(
     mut generator: Gen<JobRequest, JobResponse, impl Future<Output=Result<S, E>> + 'static + Send + Sync>,
 ) -> impl System<In = In<()>, Out = WorkResult<(), S, E>> {
@@ -360,8 +385,11 @@ fn new_gen_job<S: Any, E: Any>(
     | {
         // todo: should we yield again after this?
         let response = last_message.deref_mut().take()
-            .map(|j| j(world))
-            .unwrap_or(Box::new(()));
+            .map(|j| match j {
+                JobRequest::Yield => JobResponse::None,
+                JobRequest::WithWorld(j) => JobResponse::WithWorld(j(world)),
+            })
+            .unwrap_or_default();
         
         match generator.resume_with(response) {
             GeneratorState::Yielded(request) => {
@@ -380,10 +408,24 @@ pub trait GenJobExtensions {
     where
         T: Any + Send + 'static,
         F: FnOnce(&mut World) -> T + Send + 'static;
+    
+    #[allow(async_fn_in_trait)]
+    async fn yield_next(&mut self);
+    
+    async fn load_asset<A: AssetAsync>(&mut self, path: Arc<str>) -> Result<Arc<A>, A::Error>;
 }
 
-type JobRequest = Box<dyn FnOnce(&mut World) -> JobResponse + Send>;
-type JobResponse = Box<dyn Any + Send + 'static>;
+pub enum JobRequest {
+    Yield,
+    WithWorld(Box<dyn FnOnce(&mut World) -> Box<dyn Any + Send> + Send>)
+}
+
+#[derive(Default)]
+pub enum JobResponse {
+    #[default]
+    None,
+    WithWorld(Box<dyn Any + Send>)
+}
 
 impl GenJobExtensions for Co<JobRequest, JobResponse> {
     async fn with_world<T, F>(&mut self, f: F) -> T
@@ -391,13 +433,109 @@ impl GenJobExtensions for Co<JobRequest, JobResponse> {
         T: Any + Send + 'static,
         F: (FnOnce(&mut World) -> T) + Send + 'static
     {
-        let request: JobRequest = Box::new(move |world: &mut World| {
+        let request = JobRequest::WithWorld(Box::new(move |world: &mut World| {
             let result = f(world);
             Box::new(result)
-        });
+        }));
 
         let response = self.yield_(request).await;
+        let JobResponse::WithWorld(response) = response else {
+            panic!("mismatched job response");
+        };
+        
         *response.downcast::<T>().ok().expect("received response should be ")
     }
+
+    async fn yield_next(&mut self) {
+        self.yield_(JobRequest::Yield).await;
+    }
+
+    async fn load_asset<A: AssetAsync>(&mut self, path: Arc<str>) -> Result<Arc<A>, A::Error> {
+        // check to see if it's already loaded
+        let asset = self.with_world({
+            let path = path.clone();
+            move |world| {
+                let cache = world.resource::<ResAssetCache>();
+                cache.0.read().unwrap().get::<A>(&*path)
+            }
+        }).await;
+        
+        if let Some(asset) = asset {
+            return Ok(asset);
+        }
+        // not already load it, let's load it
+        let r = A::load(self, path.deref()).await?;
+        
+        let rc = self.with_world(move |world: &mut World| {
+            let cache = world.resource_mut::<ResAssetCache>();
+            cache.0.try_write().unwrap().insert(path.to_string(), r)
+        }).await;
+        
+        Ok(rc)
+    }
+}
+
+pub async fn load_file_bytes(load_cx: &mut AsyncLoadCtx, path: &str) -> Result<Vec<u8>, Error> {
+    let mut file = FileHandle::read_only(&path)?;
+    let mut bytes = Vec::with_capacity(800);
+    // let mut file_length = 0;
+    file.read_to_end(&mut bytes)?;
+    
+    // println!("here");
+    // println!("here");
+    // println!("here");
+
+    // loop {
+    //     // read in next bytes
+    //     // Ensure there's spare capacity
+    //     if bytes.len() <= file_length {
+    //         bytes.
+    //     }
+    // 
+    //     // Get the uninit spare capacity
+    //     let spare = bytes.spare_capacity_mut();
+    //     if spare.is_empty() {
+    //         continue;
+    //     }
+    // 
+    //     // SAFETY: We're only writing to the uninitialized part, and `set_len` will
+    //     // only advance by the number of bytes actually written.
+    //     let buf = unsafe {
+    //         core::slice::from_raw_parts_mut(spare.as_mut_ptr() as *mut u8, spare.len())
+    //     };
+    // 
+    //     // println!()
+    //     let n = file.read(buf)?;
+    //     println!("N: {}", n);
+    //     println!("N: {}", n);
+    //     println!("N: {}", n);
+    // 
+    //     if n == 0 {
+    //         break; // EOF
+    //     }
+    // 
+    //     // SAFETY: `n` bytes were just initialized by `read`.
+    //     unsafe {
+    //         let new_len = bytes.len() + n;
+    //         bytes.set_len(new_len);
+    //     }
+    //     // wait for next load opportunity
+    //     load_cx.yield_next().await;
+    // }
+    
+    // println!("[");
+    // for &byte in bytes.iter() {
+    //     println!("{:2X?}", byte);
+    // }
+    // println!("]");
+    // println!("{:2X?}", bytes);
+    // 
+    println!("{:20X}", bytes.as_ptr() as *const _ as usize);
+    println!("{:20X}", bytes.as_ptr() as *const _ as usize);
+    println!("{:20X}", bytes.as_ptr() as *const _ as usize);
+    dbg!(bytes[0]);
+    dbg!(bytes[0]);
+    dbg!(bytes[0]);
+    Ok(bytes)
 }
 

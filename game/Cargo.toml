@@ -13,17 +13,18 @@ crate-type = [
 ]
 
 [dependencies]
+anyhow = { version = "1.0", default-features = false }
 playdate = { git = "https://github.com/boozook/playdate", rev = "66da849" }
 bevy_app = { git = "https://github.com/bevyengine/bevy", default-features = false, features = [] }
 bevy_ecs = { git = "https://github.com/bevyengine/bevy", default-features = false, features = [] }
-bevy_reflect = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["glam", "smol_str", "smallvec"] }
+bevy_input = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["smol_str"] }
 bevy_platform_support = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["alloc"] }
 bevy_playdate = { path = "../bevy_playdate" }
+bevy_reflect = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["glam", "smol_str", "smallvec"] }
 diagnostic = { path = "../diagnostic", features = ["pd"] }
-genawaiter = { git = "https://github.com/Niashi24/genawaiter.git", branch = "no-std", default-features = false }
 hashbrown = { version = "0.15.2", default-features = false, features = ["default-hasher"] }
-bevy_input = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["smol_str"] }
-tiled = { git = "https://github.com/Niashi24/rs-tiled.git", branch = "nostd" }
+lz4_flex = { git = "https://github.com/PSeitz/lz4_flex.git", default-features = false }
+tiledpd = { path = "../tiledpd" }
 no_std_io2 = "0.9.0"
 derive_more = { version = "2.0.1", default-features = false, features = ["full"] }
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
@@ -37,7 +38,7 @@ name = "Bouncy Bug"
 author = "Niashi"
 version = "0.1.0"
 bundle-id = "com.niashi.bouncybug"
-build-number = 37
+build-number = 134
 description = "TODO: Description for the Bouncy Bug game."
 
 #content-warning = "This game contains mild realistic, violence and bloodshed."
@@ -48,9 +49,9 @@ launch-sound-path = "sfx/jump"
 
 [package.metadata.playdate.assets]
 "assets/test-map.tmb" = "../assets/export/test-map.tmb"
-"assets/test-map-layer-1.png" = "../assets/export/test-map-layer-1.png"
 "assets/tiles.tsb" = "../assets/export/tiles.tsb"
 "assets/tiles.png" = "../assets/export/tiles.png"
+"assets/test-map-layer-1.png" = "../assets/export/test-map-layer-1.png"
 
 #"img/system/" = "${PLAYDATE_SDK_PATH}/Examples/Game Template/Source/SystemAssets/*.png"
 #"sfx/jump.wav" = "${PLAYDATE_SDK_PATH}/Examples/Level 1-1/Source/sfx/jump.wav"

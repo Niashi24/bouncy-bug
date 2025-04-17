@@ -13,6 +13,10 @@ pub struct FileHandle {
     handle: *mut SDFile,
 }
 
+// SAFETY: Playdate is single-threaded
+unsafe impl Send for FileHandle {}
+unsafe impl Sync for FileHandle {}
+
 impl FileHandle {
     /// Opens a handle for the file at path.
     ///
