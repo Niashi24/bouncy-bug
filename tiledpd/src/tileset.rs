@@ -2,7 +2,7 @@
 use alloc::vec::Vec;
 use hashbrown::HashSet;
 use rkyv::{Archive, Deserialize, Serialize};
-use crate::dependencies::AddDependencies;
+use crate::dependencies::{AddDependencies, AddDependenciesMut};
 use crate::properties::Properties;
 
 #[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
@@ -21,6 +21,15 @@ impl AddDependencies for ArchivedTileset {
     }
 }
 
+impl AddDependenciesMut for Tileset {
+    fn add_dependencies_mut<'a: 'b, 'b>(&'a mut self, dependencies: &mut Vec<&'b mut String>) {
+        dependencies.push(&mut self.image_path);
+        for tile in self.tiles.iter_mut() {
+            tile.add_dependencies_mut(dependencies);
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
 #[rkyv(derive(Debug))]
 pub struct TileData {
@@ -30,5 +39,11 @@ pub struct TileData {
 impl AddDependencies for ArchivedTileData {
     fn add_dependencies<'a: 'b, 'b>(&'a self, dependencies: &mut HashSet<&'b str>) {
         self.properties.add_dependencies(dependencies);
+    }
+}
+
+impl AddDependenciesMut for TileData {
+    fn add_dependencies_mut<'a: 'b, 'b>(&'a mut self, dependencies: &mut Vec<&'b mut String>) {
+        self.properties.add_dependencies_mut(dependencies);
     }
 }

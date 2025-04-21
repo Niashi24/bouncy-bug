@@ -14,7 +14,7 @@
                 2
             ],
             "scale": 3.4487,
-            "selectedLayer": 2,
+            "selectedLayer": 1,
             "viewCenter": {
                 "x": 128.45420013338358,
                 "y": 77.4204772812944
@@ -62,8 +62,8 @@
     "project": "bouncy_bug.tiled-project",
     "property.type": "file",
     "recentFiles": [
-        "test-map.edit.tmx",
         "test-map.tmx",
+        "test-map.edit.tmx",
         "test-map.export.tmx",
         "tiles.tsx"
     ],

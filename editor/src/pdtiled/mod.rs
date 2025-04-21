@@ -21,7 +21,7 @@ pub fn convert_map(map: tiled::Map) -> Tilemap {
         .iter()
         .map(|s|
             s.source.clone()
-                .with_extension(TILESET_BINARY_EXT)
+                // .with_extension(TILESET_BINARY_EXT)
                 .to_string_lossy()
                 .to_string()
         )

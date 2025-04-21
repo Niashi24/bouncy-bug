@@ -7,3 +7,7 @@ use hashbrown::HashSet;
 pub trait AddDependencies {
     fn add_dependencies<'a: 'b, 'b>(&'a self, dependencies: &mut HashSet<&'b str>);
 }
+
+pub trait AddDependenciesMut {
+    fn add_dependencies_mut<'a: 'b, 'b>(&'a mut self, dependencies: &mut Vec<&'b mut String>);
+}

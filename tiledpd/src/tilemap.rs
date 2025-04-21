@@ -4,7 +4,7 @@ use core::num::NonZeroU8;
 use rkyv::{Archive, Deserialize, Portable, Serialize};
 use bytecheck::CheckBytes;
 use hashbrown::HashSet;
-use crate::dependencies::AddDependencies;
+use crate::dependencies::{AddDependencies, AddDependenciesMut};
 use crate::properties::Properties;
 
 #[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
@@ -25,6 +25,16 @@ impl AddDependencies for ArchivedTilemap {
     }
 }
 
+impl AddDependenciesMut for Tilemap {
+    fn add_dependencies_mut<'a: 'b, 'b>(&'a mut self, dependencies: &mut Vec<&'b mut String>) {
+        dependencies.extend(self.tilesets.iter_mut());
+        for layer in self.layers.iter_mut() {
+            layer.add_dependencies_mut(dependencies);
+        }
+        self.properties.add_dependencies_mut(dependencies);
+    }
+}
+
 #[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
 #[rkyv(derive(Debug))]
 pub struct Layer {
@@ -42,6 +52,13 @@ impl AddDependencies for ArchivedLayer {
     }
 }
 
+impl AddDependenciesMut for Layer {
+    fn add_dependencies_mut<'a: 'b, 'b>(&'a mut self, dependencies: &mut Vec<&'b mut String>) {
+        self.layer_data.add_dependencies_mut(dependencies);
+        self.properties.add_dependencies_mut(dependencies);
+    }
+}
+
 #[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
 #[rkyv(derive(Debug))]
 pub enum LayerData {
@@ -54,9 +71,19 @@ pub enum LayerData {
 impl AddDependencies for ArchivedLayerData {
     fn add_dependencies<'a: 'b, 'b>(&'a self, dependencies: &mut HashSet<&'b str>) {
         match self {
-            ArchivedLayerData::TileLayer(layer) => layer.add_dependencies(dependencies),
-            ArchivedLayerData::ObjectLayer(layer) => layer.add_dependencies(dependencies),
-            ArchivedLayerData::ImageLayer(layer) => layer.add_dependencies(dependencies),
+            Self::TileLayer(layer) => layer.add_dependencies(dependencies),
+            Self::ObjectLayer(layer) => layer.add_dependencies(dependencies),
+            Self::ImageLayer(layer) => layer.add_dependencies(dependencies),
+        }
+    }
+}
+
+impl AddDependenciesMut for LayerData {
+    fn add_dependencies_mut<'a: 'b, 'b>(&'a mut self, dependencies: &mut Vec<&'b mut String>) {
+        match self {
+            Self::TileLayer(layer) => layer.add_dependencies_mut(dependencies),
+            Self::ObjectLayer(layer) => layer.add_dependencies_mut(dependencies),
+            Self::ImageLayer(layer) => layer.add_dependencies_mut(dependencies),
         }
     }
 }
@@ -71,6 +98,14 @@ impl AddDependencies for ArchivedObjectLayer {
     fn add_dependencies<'a: 'b, 'b>(&'a self, dependencies: &mut HashSet<&'b str>) {
         for object in self.objects.iter() {
             object.add_dependencies(dependencies);
+        }
+    }
+}
+
+impl AddDependenciesMut for ObjectLayer {
+    fn add_dependencies_mut<'a: 'b, 'b>(&'a mut self, dependencies: &mut Vec<&'b mut String>) {
+        for object in self.objects.iter_mut() {
+            object.add_dependencies_mut(dependencies);
         }
     }
 }
@@ -90,6 +125,12 @@ pub struct ObjectData {
 impl AddDependencies for ArchivedObjectData {
     fn add_dependencies<'a: 'b, 'b>(&'a self, dependencies: &mut HashSet<&'b str>) {
         self.properties.add_dependencies(dependencies);
+    }
+}
+
+impl AddDependenciesMut for ObjectData {
+    fn add_dependencies_mut<'a: 'b, 'b>(&'a mut self, dependencies: &mut Vec<&'b mut String>) {
+        self.properties.add_dependencies_mut(dependencies);
     }
 }
 
@@ -131,6 +172,12 @@ impl AddDependencies for ArchivedImageLayer {
     }
 }
 
+impl AddDependenciesMut for ImageLayer {
+    fn add_dependencies_mut<'a: 'b, 'b>(&'a mut self, dependencies: &mut Vec<&'b mut String>) {
+        dependencies.push(&mut self.source);
+    }
+}
+
 #[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
 #[repr(C)]
 #[rkyv(derive(Debug))]
@@ -148,6 +195,14 @@ impl AddDependencies for ArchivedTileLayer {
     fn add_dependencies<'a: 'b, 'b>(&'a self, dependencies: &mut HashSet<&'b str>) {
         if let Some(image) = self.image.as_ref() {
             dependencies.insert(image);
+        }
+    }
+}
+
+impl AddDependenciesMut for TileLayer {
+    fn add_dependencies_mut<'a: 'b, 'b>(&'a mut self, dependencies: &mut Vec<&'b mut String>) {
+        if let Some(image) = self.image.as_mut() {
+            dependencies.push(image);
         }
     }
 }

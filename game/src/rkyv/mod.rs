@@ -65,13 +65,7 @@ where
 
 pub async fn load_and_decompress(async_load_ctx: &mut AsyncLoadCtx, path: &str) -> Result<Vec<u8>, anyhow::Error> {
     let bytes = load_file_bytes(async_load_ctx, path).await?;
-    dbg!(bytes[0]);
-    dbg!(bytes[0]);
-    dbg!(bytes[0]);
     let bytes = lz4_flex::decompress_size_prepended(&bytes)?;
-    dbg!(bytes[0]);
-    dbg!(bytes[0]);
-    dbg!(bytes[0]);
     
     Ok(bytes)
 }

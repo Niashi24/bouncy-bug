@@ -1,6 +1,7 @@
 mod pdtiled;
 
 use std::ffi::OsStr;
+use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -11,6 +12,7 @@ use indexmap::IndexSet;
 use tiled::{Properties, PropertyValue, TileLayer};
 use toml_edit::{value, Array, Item, Table, Value};
 use tiledpd::AddDependencies;
+use tiledpd::dependencies::AddDependenciesMut;
 // use tiledpd::properties::PropertyValue2;
 use tiledpd::properties::{ArchivedPropertyValue, PropertyValue as PVPD};
 use tiledpd::rkyv::util::AlignedVec;
@@ -18,9 +20,9 @@ use tiledpd::tilemap::{ArchivedTilemap, Tile, Tilemap};
 use tiledpd::tileset::ArchivedTileset;
 use crate::pdtiled::{convert_map, convert_property, convert_tileset};
 
-fn main() {    
-    let game_toml = std::fs::read_to_string("game/Cargo.toml").unwrap();
-    let mut game_toml = toml_edit::DocumentMut::from_str(&game_toml).unwrap();
+fn main() -> anyhow::Result<()> {
+    let game_toml = std::fs::read_to_string("game/Cargo.toml")?;
+    let mut game_toml = toml_edit::DocumentMut::from_str(&game_toml)?;
     let playdate = &mut game_toml["package"]["metadata"]["playdate"];
     // increment build number
     {
@@ -33,20 +35,45 @@ fn main() {
         println!("processing assets");
         let mut asset_table = Table::new();
         
-        let assets = run_assets();
-        for asset in assets {
-            let asset = asset.to_string_lossy().to_string();
-            let destination = format!("assets/{}", asset);
-            let source = format!("../{}/{}/{}", ASSET_PATH, EXPORT_FOLDER, asset);
+        let _ = run_assets();
+        
+        // get all files in export folder (recursively)
+        let mut files = Vec::new();
+        let mut directories = vec![PathBuf::from("assets\\export")];
+        while let Some(directory) = directories.pop() {
+            for file in fs::read_dir(&directory)? {
+                let file = file?;
+                let metadata = file.metadata()?;
+                if metadata.is_dir() {
+                    directories.push(file.path());
+                } else if metadata.is_file() {
+                    files.push(file.path());
+                }
+            }
+        }
+        
+        for file in files {
+            let file = file.to_string_lossy().replace("\\", "/");
+            let source = format!("../{}", file);
+            let destination = file.replacen("/export", "", 1);
             asset_table.insert(&destination, source.into());
         }
+        
+        // fs::read_di
+        // for asset in assets {
+        //     let asset = asset.to_string_lossy().to_string();
+        //     let destination = format!("assets/{}", asset);
+        //     let source = format!("../{}/{}/{}", ASSET_PATH, EXPORT_FOLDER, asset);
+        //     asset_table.insert(&destination, source.into());
+        // }
 
         playdate["assets"] = Item::Table(asset_table);
     }
     
     
-    std::fs::write("game/Cargo.toml", game_toml.to_string()).unwrap();
+    std::fs::write("game/Cargo.toml", game_toml.to_string())?;
     
+    Ok(())
     // run_game(true)
 }
 
@@ -75,7 +102,7 @@ pub fn run_assets() -> Vec<PathBuf> {
     for asset in manifest["assets"].as_array().unwrap() {
         let s = asset.as_str().unwrap().to_string();
         let path = path::pd_to_pc(s);
-        assets.add_asset(path);
+        assets.add_asset(path, true);
     }
     
     while let Some(asset) = assets.fulfill_next() {
@@ -100,19 +127,21 @@ struct Assets {
 }
 
 impl Assets {
-    /// Path should be **Relative to `assets` folder**.
-    pub fn add_asset(&mut self, mut asset: PathBuf) {
-        // if asset.extension() == Some(OsStr::new("tmx")) {
-        //     asset.set_extension(OsStr::new("tmb"));
-        // }
-        // if asset.extension() == Some(OsStr::new("tsx")) {
-        //     asset.set_extension(OsStr::new("tsb"));
-        // }
+    /// Path should be **Relative to `assets` folder**, representing
+    /// the path of a (possibly unprocessed) asset. Use `process = true` to skip the processing of
+    /// an asset if you know the asset is already processed (saving directly to export folder).
+    /// Ex. "folderA/tilemap.tmx" but not "folderA/tilemap.tmb".
+    pub fn add_asset(&mut self, asset: PathBuf, process: bool) {
+        
+        if !process {
+            self.processed_assets.insert(asset);
+            return;
+        }
         
         if self.processed_assets.contains(&asset) {
             return;
         }
-        
+
         self.assets_to_process.insert(asset);
     }
     
@@ -140,27 +169,26 @@ impl Assets {
 const ASSET_PATH: &str = "assets";
 const EXPORT_FOLDER: &str = "export";
 fn process_map(path: &Path, assets: &mut Assets) {
+    println!("processing tilemap: {:?}", path);
+    
     let true_map_path = Path::new(ASSET_PATH).join(path);
     
     let map = tiled::Loader::new().load_tmx_map(&true_map_path).unwrap();
-    let map = convert_map(map);
+    let mut map = convert_map(map);
+
+
+    let mut asset_paths = Vec::new();
+    map.add_dependencies_mut(&mut asset_paths);
+
+    process_asset_paths(assets, asset_paths, &true_map_path);
     
     let bytes = tiledpd::rkyv::to_bytes::<tiledpd::RkyvError>(&map).unwrap();
-    
-    let archived_map = tiledpd::rkyv::access::<ArchivedTilemap, tiledpd::RkyvError>(&bytes).unwrap();
-    dbg!(archived_map);
-    let mut asset_buf = HashSet::new();
-    archived_map.add_dependencies(&mut asset_buf);
-    for asset in asset_buf {
-        let asset = asset.trim_start_matches("assets\\");
-        let path = Path::new(asset);
-        let path = true_map_path.parent().unwrap().join(path);
-        let path = path.strip_prefix("assets\\").unwrap().to_owned();
-        
-        assets.add_asset(path);
-    }
+    // dbg!(tiledpd::rkyv::access::<ArchivedTilemap, tiledpd::RkyvError>(&bytes).unwrap());
     
     let bytes = lz4_flex::compress_prepend_size(&bytes);
+
+    let mut path = path.to_path_buf();
+    path.set_extension("tmb");
     
     let export_path = Path::new(ASSET_PATH).join(EXPORT_FOLDER).join(path);
     
@@ -171,25 +199,24 @@ fn process_map(path: &Path, assets: &mut Assets) {
 }
 
 fn process_tileset(path: &Path, assets: &mut Assets) {
+    println!("processing tileset: {:?}", path);
+    
     let true_set_path = Path::new(ASSET_PATH).join(path);
     let tileset = tiled::Loader::new().load_tsx_tileset(&true_set_path).unwrap();
-    let tileset = convert_tileset(tileset);
+    let mut tileset = convert_tileset(tileset);
+    
+    let mut asset_paths = Vec::new();
+    tileset.add_dependencies_mut(&mut asset_paths);
+    
+    process_asset_paths(assets, asset_paths, &true_set_path);
     
     let bytes = tiledpd::rkyv::to_bytes::<tiledpd::RkyvError>(&tileset).unwrap();
-    
-    let archived_set = tiledpd::rkyv::access::<ArchivedTileset, tiledpd::RkyvError>(&bytes).unwrap();
-    let mut asset_buf = HashSet::new();
-    archived_set.add_dependencies(&mut asset_buf);
-    for asset in asset_buf {
-        let asset = asset.trim_start_matches("assets\\");
-        let path = Path::new(asset);
-        let path = true_set_path.parent().unwrap().join(path);
-        let path = path.strip_prefix("assets\\").unwrap().to_owned();
-
-        assets.add_asset(path);
-    }
+    // dbg!(tiledpd::rkyv::access::<ArchivedTileset, tiledpd::RkyvError>(&bytes).unwrap());
 
     let bytes = lz4_flex::compress_prepend_size(&bytes);
+    
+    let mut path = path.to_path_buf();
+    path.set_extension("tsb");
 
     let export_path = Path::new(ASSET_PATH).join(EXPORT_FOLDER).join(path);
 
@@ -197,6 +224,42 @@ fn process_tileset(path: &Path, assets: &mut Assets) {
         std::fs::create_dir_all(parent).unwrap();
     }
     std::fs::write(export_path, &bytes).unwrap();
+}
+
+fn process_asset_paths(assets: &mut Assets, asset_paths: Vec<&mut String>, origin: &Path) {
+    for asset in asset_paths {
+
+        const EXTENSIONS: &[[&str; 3]] = &[
+            ["tmx", "tmb", "tmb"],
+            ["tsx", "tsb", "tsb"],
+            ["png", "png", "pdi"],
+        ];
+        
+        let extension = EXTENSIONS.iter()
+            .find(|[x, _, _]| asset.ends_with(x))
+            .copied()
+            .unwrap_or_else(|| {
+                dbg!(&asset);
+                let i = asset.rfind(".").expect("get extension of asset");
+                let extension = asset.split_at(i + 1).1;
+                [extension; 3]
+            });
+        
+        let [pc, _export, pd] = extension;
+        
+        let path = Path::new(asset.trim_start_matches("assets\\"));
+        let mut path = origin.parent().unwrap().join(path);
+        path.set_extension(pc);
+
+        let mut game = path.clone();
+        game.set_extension(pd);
+        let game = game.to_string_lossy().to_string().replace("\\", "/");
+        *asset = game;
+
+        path = path.strip_prefix("assets\\").unwrap().to_path_buf();
+
+        assets.add_asset(path, true);
+    }
 }
 
 pub mod path {
@@ -257,25 +320,3 @@ pub fn process_default(path: &Path) {
     // path.parent().unwrap()
     // std::fs::create_dir_all(path.parent())
 }
-
-struct AssetPath {
-    
-}
-
-impl AssetPath {
-    // name of the file to load in-game
-    pub fn pd_ref(&self) -> String {
-        todo!()
-    }
-    
-    // name of the file on pc
-    pub fn pc_path(&self) -> PathBuf {
-        todo!()
-    }
-    
-    // name of the file to put in the game toml=r
-    pub fn asset_ref(&self) -> String {
-        todo!()
-    }
-}
-

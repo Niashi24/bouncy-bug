@@ -5,7 +5,7 @@ use hashbrown::{HashMap, HashSet};
 use rkyv::{Archive, Deserialize, Serialize};
 use rkyv::collections::swiss_table::ArchivedHashMap;
 use rkyv::string::ArchivedString;
-use crate::dependencies::AddDependencies;
+use crate::dependencies::{AddDependencies, AddDependenciesMut};
 
 /// Represents a custom property's value.
 ///
@@ -53,10 +53,28 @@ impl AddDependencies for ArchivedPropertyValue {
     }
 }
 
+impl AddDependenciesMut for PropertyValue {
+    fn add_dependencies_mut<'a: 'b, 'b>(&'a mut self, dependencies: &mut Vec<&'b mut String>) {
+        match self {
+            Self::FileValue(file) => { dependencies.push(file) }
+            Self::ClassValue { properties, .. } => properties.add_dependencies_mut(dependencies),
+            _ => {},
+        }
+    }
+}
+
 impl AddDependencies for ArchivedProperties {
     fn add_dependencies<'a: 'b, 'b>(&'a self, dependencies: &mut HashSet<&'b str>) {
         for property in self.values() {
             property.add_dependencies(dependencies);
+        }
+    }
+}
+
+impl AddDependenciesMut for Properties {
+    fn add_dependencies_mut<'a: 'b, 'b>(&'a mut self, dependencies: &mut Vec<&'b mut String>) {
+        for property in self.values_mut() {
+            property.add_dependencies_mut(dependencies);
         }
     }
 }

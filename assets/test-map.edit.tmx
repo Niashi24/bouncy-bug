@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.11.0" orientation="orthogonal" renderorder="right-down" width="25" height="15" tilewidth="16" tileheight="16" infinite="0" nextlayerid="4" nextobjectid="6">
+<map version="1.10" tiledversion="1.11.0" orientation="orthogonal" renderorder="right-down" width="25" height="15" tilewidth="16" tileheight="16" infinite="0" nextlayerid="5" nextobjectid="6">
  <editorsettings>
   <export target="test-map.tmx" format="tmx"/>
  </editorsettings>
@@ -24,12 +24,6 @@
 </data>
  </layer>
  <objectgroup id="2" name="Object Layer 1">
-  <object id="1" x="94.1176" y="13.6223">
-   <properties>
-    <property name="f" type="int" value="-2"/>
-   </properties>
-   <polygon points="1.88235,2.37771 65.8824,2.37771 1.88235,34.3777 -30.1176,18.3777"/>
-  </object>
   <object id="2" gid="2" x="195.509" y="25.3375" width="16" height="16"/>
   <object id="3" gid="2147483651" x="217.387" y="29.4654" width="16" height="16" rotation="90">
    <properties>

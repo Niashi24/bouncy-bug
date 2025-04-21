@@ -38,7 +38,7 @@ name = "Bouncy Bug"
 author = "Niashi"
 version = "0.1.0"
 bundle-id = "com.niashi.bouncybug"
-build-number = 134
+build-number = 145
 description = "TODO: Description for the Bouncy Bug game."
 
 #content-warning = "This game contains mild realistic, violence and bloodshed."
@@ -48,10 +48,11 @@ image-path = "img/system"
 launch-sound-path = "sfx/jump"
 
 [package.metadata.playdate.assets]
-"assets/test-map.tmb" = "../assets/export/test-map.tmb"
-"assets/tiles.tsb" = "../assets/export/tiles.tsb"
-"assets/tiles.png" = "../assets/export/tiles.png"
 "assets/test-map-layer-1.png" = "../assets/export/test-map-layer-1.png"
+"assets/test-map.tmb" = "../assets/export/test-map.tmb"
+"assets/tiles.png" = "../assets/export/tiles.png"
+"assets/tiles.tsb" = "../assets/export/tiles.tsb"
+"assets/folder/tiles-copy.png" = "../assets/export/folder/tiles-copy.png"
 
 #"img/system/" = "${PLAYDATE_SDK_PATH}/Examples/Game Template/Source/SystemAssets/*.png"
 #"sfx/jump.wav" = "${PLAYDATE_SDK_PATH}/Examples/Level 1-1/Source/sfx/jump.wav"
