@@ -63,14 +63,14 @@ where
     }
 }
 
-pub async fn load_and_decompress(async_load_ctx: &mut AsyncLoadCtx, path: &str) -> Result<Vec<u8>, anyhow::Error> {
+pub async fn load_and_decompress(async_load_ctx: &mut AsyncLoadCtx, path: &str) -> anyhow::Result<Vec<u8>> {
     let bytes = load_file_bytes(async_load_ctx, path).await?;
     let bytes = lz4_flex::decompress_size_prepended(&bytes)?;
     
     Ok(bytes)
 }
 
-pub async fn load_compressed_archive<T>(async_load_ctx: &mut AsyncLoadCtx, path: &str) -> Result<OwnedArchived<T>, anyhow::Error>
+pub async fn load_compressed_archive<T>(async_load_ctx: &mut AsyncLoadCtx, path: &str) -> anyhow::Result<OwnedArchived<T>>
 where
     T: Portable + for<'a> CheckBytes<HighValidator<'a, RkyvError>>
 {

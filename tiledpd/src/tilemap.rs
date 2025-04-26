@@ -13,6 +13,8 @@ pub struct Tilemap {
     pub tilesets: Vec<String>,
     pub layers: Vec<Layer>,
     pub properties: Properties,
+    pub tile_width: u32,
+    pub tile_height: u32,
 }
 
 impl AddDependencies for ArchivedTilemap {
@@ -38,6 +40,7 @@ impl AddDependenciesMut for Tilemap {
 #[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
 #[rkyv(derive(Debug))]
 pub struct Layer {
+    pub name: String,
     pub id: u32,
     pub x: f32,
     pub y: f32,
@@ -285,7 +288,8 @@ impl Tile {
         } else {
             mask &= !(1 << 3);
         }
-        self.mask = NonZeroU8::new(mask).unwrap();
+        // SAFETY: zero bit is still set after mask
+        self.mask = unsafe { NonZeroU8::new_unchecked(mask) };
     }
 
     pub fn set_flip_y(&mut self, flip: bool) {
@@ -295,7 +299,8 @@ impl Tile {
         } else {
             mask &= !(1 << 2);
         }
-        self.mask = NonZeroU8::new(mask).unwrap();
+        // SAFETY: zero bit is still set after mask
+        self.mask = unsafe { NonZeroU8::new_unchecked(mask) };
     }
 
     pub fn set_flip_d(&mut self, flip: bool) {

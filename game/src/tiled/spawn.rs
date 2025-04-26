@@ -1,0 +1,157 @@
+﻿use crate::tiled::{JobCommandsExt, LayerData, Map, SpriteLoader, SpriteTableLoader, Static};
+use alloc::string::ToString;
+use alloc::vec::Vec;
+use bevy_ecs::entity::Entity;
+use bevy_ecs::name::Name;
+use bevy_ecs::prelude::{Component, EntityCommands};
+use bevy_ecs::reflect::ReflectCommandExt;
+use bevy_transform::components::Transform;
+use hashbrown::HashMap;
+use tiledpd::tilemap::ArchivedObjectShape;
+use bevy_platform_support::sync::Arc;
+use bevy_reflect::Reflect;
+
+/// WARNING: This component is only used to keep a reference to the Arc<Map> data.
+///
+/// To spawn a map in, use [`Commands::insert_loading_asset`](JobCommandsExt::insert_loading_asset)
+/// with [`MapLoader`](super::MapLoader).
+#[derive(Component, Clone)]
+pub struct MapHandle(pub Arc<Map>);
+
+pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
+    entity_commands.insert(MapHandle(Arc::clone(&map)));
+    let map_data = map.map.data.access();
+    // spawn all objects and create object-id-to-entity map
+    let objects = {
+        let mut objects: HashMap<u32, Entity> = HashMap::new();
+        let mut entity_name: Vec<(Entity, _)> = Vec::new();
+        
+        for layer in map.layers() {
+            match layer.data() {
+                LayerData::ObjectLayer { data, .. } => {
+                    for obj in data.objects.iter() {
+                        let id = obj.id.to_native();
+                        let entity = entity_commands.commands_mut().spawn_empty().id();
+                        objects.insert(id, entity);
+                        // optimization, insert batch
+                        entity_name.push((
+                            entity,
+                            (
+                                Name::new(obj.name.to_string()),
+                                Transform::from_xyz(obj.x.to_native(), obj.y.to_native(), 0.0),
+                            )
+                        ));
+                    }
+                }
+                _ => {}
+            }
+        }
+        
+        entity_commands.commands_mut()
+            .insert_batch(entity_name);
+        
+        objects
+    };
+    
+    let mut hydrated = map.map.properties.clone().hydrate(&objects);
+    
+    entity_commands.with_children(|commands| {
+        for layer in map.layers() {
+            let mut layer_entity = commands.spawn((
+                Name::new(layer.name.to_string()),
+                Transform::from_xyz(layer.x.to_native(), layer.y.to_native(), 0.0),
+                // todo: add visibility component
+            ));
+            let reflect = hydrated.layers.remove(&layer.id.to_native()).unwrap();
+
+            let is_static = reflect.properties.iter()
+                .any(|s| s.represents::<Static>());
+
+            for component in reflect.properties {
+                layer_entity.insert_reflect(component);
+            }
+
+            match layer.data() {
+                LayerData::TileLayer(tile_layer) => {
+                    if let Some(image) = tile_layer.image.as_ref() {
+
+                        layer_entity.insert_loading_asset(SpriteLoader {
+                            center: [0.0; 2]
+                        }, 10, image.to_string());
+
+                        if is_static {
+                            continue;
+                        }
+
+                        let width = tile_layer.width.to_native();
+                        layer_entity.with_children(|c| {
+                            for (i, tile) in tile_layer.tiles().enumerate() {
+                                let Some(tile) = tile else {
+                                    continue;
+                                };
+
+                                // map.tilesets
+
+                                let i = i as u32;
+                                let [x, y] = [i % width, i / width];
+                                let [x, y] = [x * map_data.tile_width, y * map_data.tile_height];
+
+                                let mut tile_entity = c.spawn((
+                                    Name::new("Tile"),
+                                    Transform::from_xyz(x as f32, y as f32, 0.0),
+                                ));
+
+                                // let mut tile_entity = layer_e.
+                                //     .spawn((
+                                //         Name::new("Tile"),
+                                //     ));
+
+                                let (_, properties) = tile.data();
+                                for property in properties.properties.iter() {
+                                    tile_entity.insert_reflect(property.to_dynamic());
+                                }
+                            }
+                        });
+                    } else {
+                        todo!("implement individual tile drawing")
+                    }
+                }
+                LayerData::ObjectLayer { map, data } => {
+                    for obj in data.objects.iter() {
+                        // I could remove the object here,
+                        // but it's all going to be dropped at once later.
+                        let entity = *objects.get(&obj.id.to_native()).unwrap();
+                        layer_entity.add_child(entity);
+                        let mut object = layer_entity.commands_mut().entity(entity);
+                        
+                        let reflect = hydrated.objects.remove(&obj.id.to_native()).unwrap();
+                        for property in reflect.properties {
+                            object.insert_reflect(property);
+                        }
+                        
+                        if let &ArchivedObjectShape::Tile(tile) = &obj.shape {
+                            let tileset = &map.tilesets[tile.get_tilemap_idx() as usize];
+                            let path = tileset.data.access().image_path.to_string();
+                            
+                            object.insert_loading_asset(SpriteTableLoader {
+                                sprite_loader: SpriteLoader {
+                                    // center is on bottom left corner for whatever reason
+                                    center: [0.0, 1.0],
+                                },
+                                index: 0,
+                            }, 10, path);
+                        }
+                    }
+                }
+                LayerData::ImageLayer(image_layer) => {
+                    layer_entity
+                        .insert_loading_asset(SpriteLoader {
+                            center: [0.0; 2]
+                        }, 10, image_layer.source.to_string());
+                }
+            }
+        }
+    });
+    
+    
+}

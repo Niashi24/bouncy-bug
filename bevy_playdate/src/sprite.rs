@@ -1,6 +1,6 @@
 use bevy_ecs::schedule::IntoScheduleConfigs;
 use crate::angle::PDAngle;
-use alloc::rc::Rc;
+use bevy_platform_support::sync::Arc;
 use alloc::vec::Vec;
 use bevy_app::{App, Plugin, PostUpdate};
 use bevy_ecs::component::{Component, HookContext};
@@ -14,7 +14,9 @@ use playdate::graphics::bitmap::Bitmap;
 use playdate::graphics::color::Color;
 use playdate::graphics::{BitmapFlip, BitmapFlipExt, Graphics};
 use playdate::sprite::{draw_sprites, Sprite as PDSprite};
+use playdate::sys::ffi::LCDBitmapFlip;
 use playdate::sys::traits::AsRaw;
+use crate::asset::BitmapAsset;
 
 pub struct SpritePlugin;
 
@@ -44,7 +46,7 @@ pub struct Sprite {
     #[deref]
     spr: PDSprite,
     /// TODO: Replace with Handle
-    bitmap: Rc<Bitmap>,
+    bitmap: Arc<BitmapAsset>,
 }
 
 fn add_to_display_list(w: DeferredWorld, HookContext { entity: e, .. }: HookContext) {
@@ -60,8 +62,8 @@ fn remove_from_display_list(w: DeferredWorld, HookContext { entity: e, .. }: Hoo
 unsafe impl Send for Sprite {}
 unsafe impl Sync for Sprite {}
 
-pub fn empty_bitmap() -> Rc<Bitmap> {
-    Rc::new(Bitmap::new(10, 10, Color::CLEAR).expect("create default empty bitmap"))
+pub fn empty_bitmap() -> Arc<BitmapAsset> {
+    Arc::new(BitmapAsset(Bitmap::new(10, 10, Color::CLEAR).expect("create default empty bitmap")))
 }
 
 impl Sprite {
@@ -70,9 +72,9 @@ impl Sprite {
         Self::new_from_bitmap(empty_bitmap(), BitmapFlip::Unflipped)
     }
 
-    pub fn new_from_bitmap(bitmap: Rc<Bitmap>, flip: BitmapFlip) -> Self {
+    pub fn new_from_bitmap(bitmap: Arc<BitmapAsset>, flip: BitmapFlip) -> Self {
         let spr = PDSprite::new();
-        spr.set_image(&*bitmap, flip);
+        spr.set_image(&bitmap.0, flip);
 
         Self { spr, bitmap }
     }
@@ -95,14 +97,14 @@ impl Sprite {
             api!(graphics).popContext.unwrap()();
         }
 
-        Self::new_from_bitmap(Rc::new(image), BitmapFlip::Unflipped)
+        Self::new_from_bitmap(Arc::new(BitmapAsset(image)), BitmapFlip::Unflipped)
     }
 
-    pub fn bitmap(&self) -> Rc<Bitmap> {
+    pub fn bitmap(&self) -> Arc<BitmapAsset> {
         self.bitmap.clone()
     }
 
-    pub fn set_bitmap(&mut self, bitmap: Rc<Bitmap>) {
+    pub fn set_bitmap(&mut self, bitmap: Arc<Bitmap>) {
         self.spr.set_image(&*bitmap, BitmapFlip::Unflipped);
     }
 
@@ -131,12 +133,12 @@ pub enum SpriteRotation {
     Redraw {
         /// The bitmap that is rotated.
         /// If `None`, uses the current bitmap on the sprite.
-        reference: Option<Rc<Bitmap>>,
+        reference: Option<Arc<Bitmap>>,
         rotated_info: RotatedInfo,
     },
     /// Precompute each [`Bitmap::rotated_clone`] in a certain number of directions.
     /// Use [`SpriteRotation::cached`] to auto-generate.
-    Cached(Vec<Rc<Bitmap>>, RotatedInfo),
+    Cached(Vec<Arc<Bitmap>>, RotatedInfo),
 }
 
 // SAFETY: The Playdate is single-threaded.
@@ -151,10 +153,10 @@ impl SpriteRotation {
         for i in 0..resolution {
             let angle = i as f32 / resolution as f32 * 360.0;
             let rotated = sprite
-                .bitmap
+                .bitmap.0
                 .rotated_clone(angle, 1.0, 1.0)
                 .expect("precompute bitmap rotated clone");
-            directions.push(Rc::new(rotated));
+            directions.push(Arc::new(rotated));
         }
 
         let rotation_info = RotatedInfo {
@@ -164,26 +166,26 @@ impl SpriteRotation {
         Self::Cached(directions, rotation_info)
     }
 
-    pub fn sample_rotation(&self, sprite: &Sprite, angle: PDAngle) -> Rc<Bitmap> {
-        match self {
-            SpriteRotation::Ignore => sprite.bitmap.clone(),
-            SpriteRotation::Redraw { reference, .. } => {
-                let rotated = reference
-                    .as_ref()
-                    .unwrap_or(&sprite.bitmap)
-                    .rotated_clone(angle, 1.0, 1.0)
-                    .expect("rotate SpriteRotation::Redraw bitmap");
-
-                Rc::new(rotated)
-            }
-            SpriteRotation::Cached(directions, ..) => {
-                // dbg!(angle);
-                let idx =
-                    ((-angle + 720.0 + 90.0) % 360.0 * directions.len() as f32 / 360.0) as usize;
-                directions.get(idx).unwrap_or(&empty_bitmap()).clone()
-            }
-        }
-    }
+    // pub fn sample_rotation(&self, sprite: &Sprite, angle: PDAngle) -> Arc<BitmapAsset> {
+    //     match self {
+    //         SpriteRotation::Ignore => sprite.bitmap.clone(),
+    //         SpriteRotation::Redraw { reference, .. } => {
+    //             let rotated = reference
+    //                 .as_ref()
+    //                 .unwrap_or(&sprite.bitmap)
+    //                 .rotated_clone(angle, 1.0, 1.0)
+    //                 .expect("rotate SpriteRotation::Redraw bitmap");
+    // 
+    //             Arc::new(rotated)
+    //         }
+    //         SpriteRotation::Cached(directions, ..) => {
+    //             // dbg!(angle);
+    //             let idx =
+    //                 ((-angle + 720.0 + 90.0) % 360.0 * directions.len() as f32 / 360.0) as usize;
+    //             directions.get(idx).unwrap_or(&empty_bitmap()).clone()
+    //         }
+    //     }
+    // }
 
     pub fn is_rotated(&self) -> Option<&RotatedInfo> {
         match self {

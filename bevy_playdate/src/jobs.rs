@@ -13,6 +13,7 @@ use core::cmp::Ordering;
 use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut};
 use bevy_app::{App, Last, Plugin};
+use bevy_ecs::event::{Event, EventWriter};
 use derive_more::From;
 use hashbrown::HashMap;
 use crate::time::RunningTimer;
@@ -24,6 +25,7 @@ impl Plugin for JobPlugin {
         app.init_resource::<Jobs>()
             .init_resource::<JobsScheduler>();
         app.add_systems(Last, Jobs::run_jobs_system);
+        app.add_event::<JobFinished>();
     }
 }
 
@@ -104,6 +106,12 @@ pub struct Jobs {
 }
 
 type FinishedJob = Result<Box<dyn Any>, Box<dyn Any>>;
+
+#[derive(Event)]
+pub struct JobFinished {
+    // pub handle: JobHandle<>
+    pub job_id: JobId,
+}
 
 unsafe impl Send for Jobs {}
 unsafe impl Sync for Jobs {}
@@ -189,7 +197,7 @@ impl Jobs {
     }
     
     #[must_use]
-    fn run_job(&mut self, world: &mut World, skip_buffer: &mut Vec<RunningJob>) -> bool {
+    fn run_job(&mut self, world: &mut World, skip_buffer: &mut Vec<RunningJob>,) -> bool {
         let Some(mut job) = self.jobs.pop() else {
             return false;
         };
@@ -205,11 +213,17 @@ impl Jobs {
             }
             ErasedWorkStatus::Success(val) => {
                 self.finished.insert(job.id, Ok(val));
+                world.send_event(JobFinished {
+                    job_id: job.id,
+                });
                 world.unregister_system(job.job)
                     .expect("unregister completed job (success)");
             }
             ErasedWorkStatus::Error(val) => {
                 self.finished.insert(job.id, Err(val));
+                world.send_event(JobFinished {
+                    job_id: job.id,
+                });
                 world.unregister_system(job.job)
                     .expect("unregister completed job (error)");
             }
@@ -266,8 +280,14 @@ pub enum JobStatusRef<'a, Work, Success, Error> {
 }
 
 pub struct JobHandle<Work, Success, Error> {
-    id: usize,
+    id: JobId,
     _phantom_data: PhantomData<(Work, Success, Error)>,
+}
+
+impl<Work, Success, Error> JobHandle<Work, Success, Error> {
+    pub fn id(&self) -> JobId {
+        self.id
+    }
 }
 
 pub struct UnstartedJob {
@@ -411,7 +431,8 @@ pub trait GenJobExtensions {
     
     #[allow(async_fn_in_trait)]
     async fn yield_next(&mut self);
-    
+
+    #[allow(async_fn_in_trait)]
     async fn load_asset<A: AssetAsync>(&mut self, path: Arc<str>) -> Result<Arc<A>, A::Error>;
 }
 
@@ -477,65 +498,52 @@ impl GenJobExtensions for Co<JobRequest, JobResponse> {
 
 pub async fn load_file_bytes(load_cx: &mut AsyncLoadCtx, path: &str) -> Result<Vec<u8>, Error> {
     let mut file = FileHandle::read_only(&path)?;
-    let mut bytes = Vec::with_capacity(800);
-    // let mut file_length = 0;
-    file.read_to_end(&mut bytes)?;
+    let mut bytes = Vec::with_capacity(128);
+    let mut file_length = 0;
     
-    // println!("here");
-    // println!("here");
-    // println!("here");
+    // use playdate::system::System as PDSys;
+    // let cur = PDSys::Default().elapsed_time();
 
-    // loop {
-    //     // read in next bytes
-    //     // Ensure there's spare capacity
-    //     if bytes.len() <= file_length {
-    //         bytes.
-    //     }
-    // 
-    //     // Get the uninit spare capacity
-    //     let spare = bytes.spare_capacity_mut();
-    //     if spare.is_empty() {
-    //         continue;
-    //     }
-    // 
-    //     // SAFETY: We're only writing to the uninitialized part, and `set_len` will
-    //     // only advance by the number of bytes actually written.
-    //     let buf = unsafe {
-    //         core::slice::from_raw_parts_mut(spare.as_mut_ptr() as *mut u8, spare.len())
-    //     };
-    // 
-    //     // println!()
-    //     let n = file.read(buf)?;
-    //     println!("N: {}", n);
-    //     println!("N: {}", n);
-    //     println!("N: {}", n);
-    // 
-    //     if n == 0 {
-    //         break; // EOF
-    //     }
-    // 
-    //     // SAFETY: `n` bytes were just initialized by `read`.
-    //     unsafe {
-    //         let new_len = bytes.len() + n;
-    //         bytes.set_len(new_len);
-    //     }
-    //     // wait for next load opportunity
-    //     load_cx.yield_next().await;
-    // }
+    loop {
+        // read in next bytes
+        // Ensure there's spare capacity
+        if bytes.len() <= file_length {
+            bytes.reserve(1);
+        }
     
-    // println!("[");
-    // for &byte in bytes.iter() {
-    //     println!("{:2X?}", byte);
-    // }
-    // println!("]");
-    // println!("{:2X?}", bytes);
-    // 
-    println!("{:20X}", bytes.as_ptr() as *const _ as usize);
-    println!("{:20X}", bytes.as_ptr() as *const _ as usize);
-    println!("{:20X}", bytes.as_ptr() as *const _ as usize);
-    dbg!(bytes[0]);
-    dbg!(bytes[0]);
-    dbg!(bytes[0]);
+        // Get the uninit spare capacity
+        let spare = bytes.spare_capacity_mut();
+        if spare.is_empty() {
+            continue;
+        }
+        
+        let buf = spare.write_filled(0);
+    
+        // println!()
+        let n = file.read(buf)?;
+        println!("N: {}", n);
+        println!("N: {}", n);
+        println!("N: {}", n);
+    
+        if n == 0 {
+            break; // EOF
+        }
+    
+        // SAFETY: `n` bytes were just initialized by `read`.
+        unsafe {
+            let new_len = bytes.len() + n;
+            bytes.set_len(new_len);
+        }
+        file_length += n;
+        // wait for next load opportunity
+        load_cx.yield_next().await;
+    }
+    
+    // let after = PDSys::Default().elapsed_time();
+    // dbg!(after - cur);
+    
+    bytes.truncate(file_length);
     Ok(bytes)
 }
+
 

@@ -32,7 +32,9 @@ pub fn convert_map(map: tiled::Map) -> Tilemap {
     Tilemap {
         tilesets,
         layers,
-        properties
+        properties,
+        tile_width: map.tile_width,
+        tile_height: map.tile_height,
     }
 }
 
@@ -41,6 +43,7 @@ pub fn convert_layer(layer: Layer) -> LayerPD {
     let layer_data = convert_layer_data(layer);
     
     LayerPD {
+        name: layer.name.clone(),
         id: layer.id(),
         x: data.offset_x,
         y: data.offset_y,

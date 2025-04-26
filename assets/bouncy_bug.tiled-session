@@ -13,11 +13,11 @@
             "expandedObjectLayers": [
                 2
             ],
-            "scale": 3.4487,
-            "selectedLayer": 1,
+            "scale": 1.81,
+            "selectedLayer": 2,
             "viewCenter": {
-                "x": 128.45420013338358,
-                "y": 77.4204772812944
+                "x": 176.7955801104972,
+                "y": 119.33701657458566
             }
         },
         "test-map.export.tmx": {
@@ -32,11 +32,14 @@
             "scaleInDock": 1
         },
         "test-map.tmx": {
-            "scale": 3.4487,
-            "selectedLayer": 0,
+            "expandedObjectLayers": [
+                2
+            ],
+            "scale": 3.4856,
+            "selectedLayer": 1,
             "viewCenter": {
-                "x": 128.45420013338358,
-                "y": 77.4204772812944
+                "x": 143.7342207941244,
+                "y": 81.19118659628185
             }
         },
         "tiles.tsx": {

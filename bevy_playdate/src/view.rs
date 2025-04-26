@@ -73,8 +73,8 @@ pub fn set_sprite_affine(sprite: &mut Sprite, spr_rot: &SpriteRotation, affine: 
     // dbg!(angle);
     // todo: replace with PDAngle::from_proper
     let angle: PDAngle = 90.0 - angle_math.to_degrees();
-    let bitmap = spr_rot.sample_rotation(sprite, angle);
-    sprite.set_bitmap(bitmap);
+    // let bitmap = spr_rot.sample_rotation(sprite, angle);
+    // sprite.set_bitmap(bitmap);
 
     if let Some(rotated_info) = spr_rot.is_rotated() {
         let center = Vec2::from(rotated_info.center);

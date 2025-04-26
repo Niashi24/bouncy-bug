@@ -2,9 +2,11 @@
 use alloc::string::ToString;
 use bevy_app::{App, Last, Plugin, Startup};
 use bevy_ecs::entity::Entity;
+use bevy_ecs::name::Name;
 use bevy_ecs::prelude::{Component, IntoScheduleConfigs};
 use bevy_ecs::system::{Commands, In, Query, Res, ResMut};
 use bevy_input::ButtonInput;
+use bevy_transform::prelude::Transform;
 use bevy_playdate::asset::ResAssetCache;
 use bevy_playdate::input::PlaydateButton;
 use bevy_playdate::jobs::{JobHandle, JobStatusRef, Jobs, JobsScheduler, WorkResult};
@@ -14,7 +16,7 @@ use pd::graphics::color::{Color, LCDColorConst};
 use pd::graphics::fill_rect;
 use pd::graphics::text::draw_text;
 use pd::sys::ffi::LCDColor;
-use crate::tiled::{Map, TiledMap, TiledSet};
+use crate::tiled::{JobCommandsExt, Map, MapLoader, TiledMap, TiledSet};
 // use crate::pdtiled::loader::TiledLoader;
 
 pub struct GamePlugin;
@@ -86,10 +88,12 @@ fn control_job(
     asset_cache: Res<ResAssetCache>,
 ) {
     if input.just_pressed(PlaydateButton::A) {
-        let _ = scheduler.load_asset::<Map>(0, "assets/test-map.tmb");
+        
         commands.spawn(JobTestComponent {
             job: scheduler.add(1, TestJob(6000), test_job),
-        });
+        })
+            .insert((Name::new("Map"), Transform::from_xyz(20.0, 20.0, 0.0)))
+            .insert_loading_asset(MapLoader, 10, "assets/test-map.tmb");
     }
     
     if input.just_pressed(PlaydateButton::B) {

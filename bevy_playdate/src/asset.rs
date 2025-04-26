@@ -1,16 +1,18 @@
-﻿use alloc::borrow::Cow;
+﻿use crate::jobs::{AsyncLoadCtx, GenJobExtensions};
+use alloc::borrow::Cow;
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-use core::any::{Any, TypeId};
-use core::ops::Deref;
 use bevy_app::{App, Plugin};
 use bevy_ecs::prelude::Resource;
+use bevy_platform_support::sync::{Arc, LazyLock, RwLock, Weak};
+use core::any::{Any, TypeId};
+use derive_more::Deref;
 use hashbrown::HashMap;
-use no_std_io2::io::Read;
-use bevy_platform_support::sync::{Arc, LazyLock, Mutex, RwLock, Weak};
+use playdate::graphics::api;
+use playdate::graphics::bitmap::Bitmap;
+use playdate::graphics::bitmap::table::BitmapTable;
+use playdate::graphics::error::ApiError;
 use playdate::println;
-use crate::file::{BufferedReader, FileHandle};
-use crate::jobs::AsyncLoadCtx;
 
 pub struct AssetPlugin;
 
@@ -36,18 +38,11 @@ impl Default for ResAssetCache {
 
 pub static ASSET_CACHE: LazyLock<RwLock<AssetCache>> = LazyLock::new(|| RwLock::default());
 
-pub trait AssetAsync: Sized + Send + Sync + Any {
-    type Error: Any + Send + Sync;
-
-    fn load(load_cx: &mut AsyncLoadCtx, path: &str) -> impl Future<Output = Result<Self, Self::Error>> + Send + Sync;
-}
-
 // SAFETY: playdate is single threaded
 // unsafe impl Send for AssetCache {}
 // unsafe impl Sync for AssetCache {}
 
 impl AssetCache {
-
     /// Insert an asset of the given type into the given path, overwriting any asset currently there.
     #[must_use]
     pub fn insert<A: Any + Send + Sync>(&mut self, path: impl Into<Cow<'static, str>>, asset: A) -> Arc<A> {
@@ -83,6 +78,81 @@ impl AssetCache {
         self.cache.retain(|_, v| v.strong_count() > 0);
     }
 }
+
+pub trait AssetAsync: Sized + Send + Sync + Any {
+    type Error: Any + Send + Sync;
+
+    fn load(load_cx: &mut AsyncLoadCtx, path: &str) -> impl Future<Output = Result<Self, Self::Error>> + Send + Sync;
+}
+
+#[derive(Deref, Clone)]
+pub struct BitmapAsset(pub Bitmap);
+
+// SAFETY: playdate is single threaded
+unsafe impl Send for BitmapAsset {}
+unsafe impl Sync for BitmapAsset {}
+
+impl AssetAsync for BitmapAsset {
+    type Error = ApiError;
+
+    async fn load(_load_cx: &mut AsyncLoadCtx, path: &str) -> Result<Self, Self::Error> {
+        Ok(BitmapAsset(Bitmap::<api::Default>::load(path)?))
+    }
+}
+
+pub struct BitmapTableAsset {
+    // only need this to keep ownership of images (freed on drop)
+    _table: BitmapTable,
+    // table isn't going to be changed ever so we can use a Boxed slice
+    bitmaps: Box<[Arc<BitmapAsset>]>,
+}
+
+impl AssetAsync for BitmapTableAsset {
+    type Error = ApiError;
+
+    async fn load(_load_cx: &mut AsyncLoadCtx, path: &str) -> Result<Self, Self::Error> {
+        let table = BitmapTable::<api::Default>::load(path)?;
+        // we can't yield here because BitmapTable isn't Send/Sync.
+        // if loading the table or creating the bitmaps take too long in benchmarks,
+        // we can wrap table in an intermediary step.
+        // _load_cx.yield_next().await;
+        
+        Ok(BitmapTableAsset::from_table(table))
+    }
+}
+
+impl BitmapTableAsset {
+    pub fn from_table(table: BitmapTable) -> Self {
+        let mut len = 0;
+
+        table.info::<api::Default>(Some(&mut len), None);
+
+        let mut bitmaps = Vec::with_capacity(len as usize);
+        for i in 0..len {
+            let bitmap = table.get(i).unwrap();
+            let bitmap = BitmapAsset(bitmap);
+            let bitmap = Arc::new(bitmap);
+            bitmaps.push(bitmap);
+        }
+
+        Self {
+            _table: table,
+            bitmaps: bitmaps.into_boxed_slice(),
+        }
+    }
+
+    pub fn get(&self, i: usize) -> Option<Arc<BitmapAsset>> {
+        self.bitmaps.get(i).map(Arc::clone)
+    }
+    
+    pub fn len(&self) -> usize {
+        self.bitmaps.len()
+    }
+}
+
+// SAFETY: playdate is single threaded
+unsafe impl Send for BitmapTableAsset {}
+unsafe impl Sync for BitmapTableAsset {}
 
 
 

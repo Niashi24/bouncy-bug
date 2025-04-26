@@ -1,3 +1,4 @@
+#![feature(maybe_uninit_fill)]
 #![no_std]
 
 pub mod angle;

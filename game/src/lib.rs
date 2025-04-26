@@ -1,3 +1,4 @@
+#![feature(adt_const_params)]
 #![no_std]
 
 extern crate alloc;
