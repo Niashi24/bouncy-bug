@@ -13,7 +13,7 @@ use bevy_ecs::reflect::AppTypeRegistry;
 use bevy_ecs::system::{NonSendMut, Res};
 use bevy_ecs::world::{DeferredWorld, EntityWorldMut};
 use no_std_io2::io::{Error, Read, Write};
-use bevy_platform_support::sync::Arc;
+use bevy_platform::sync::Arc;
 use bevy_reflect::{PartialReflect, Reflect};
 use derive_more::Deref;
 use pd::graphics::error::ApiError;

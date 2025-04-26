@@ -8,7 +8,7 @@ use bevy_ecs::reflect::ReflectCommandExt;
 use bevy_transform::components::Transform;
 use hashbrown::HashMap;
 use tiledpd::tilemap::ArchivedObjectShape;
-use bevy_platform_support::sync::Arc;
+use bevy_platform::sync::Arc;
 use bevy_reflect::Reflect;
 
 /// WARNING: This component is only used to keep a reference to the Arc<Map> data.

@@ -4,7 +4,7 @@ use alloc::boxed::Box;
 use alloc::vec::Vec;
 use bevy_app::{App, Plugin};
 use bevy_ecs::prelude::Resource;
-use bevy_platform_support::sync::{Arc, LazyLock, RwLock, Weak};
+use bevy_platform::sync::{Arc, LazyLock, RwLock, Weak};
 use core::any::{Any, TypeId};
 use derive_more::Deref;
 use hashbrown::HashMap;

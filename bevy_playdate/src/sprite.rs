@@ -1,6 +1,6 @@
 use bevy_ecs::schedule::IntoScheduleConfigs;
 use crate::angle::PDAngle;
-use bevy_platform_support::sync::Arc;
+use bevy_platform::sync::Arc;
 use alloc::vec::Vec;
 use bevy_app::{App, Plugin, PostUpdate};
 use bevy_ecs::component::{Component, HookContext};

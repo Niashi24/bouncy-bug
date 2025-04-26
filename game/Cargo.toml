@@ -15,13 +15,13 @@ crate-type = [
 [dependencies]
 anyhow = { version = "1.0", default-features = false }
 playdate = { git = "https://github.com/boozook/playdate", rev = "66da849" }
-bevy_app = { git = "https://github.com/bevyengine/bevy", default-features = false, features = [] }
-bevy_ecs = { git = "https://github.com/bevyengine/bevy", default-features = false, features = [] }
-bevy_input = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["smol_str"] }
-bevy_platform_support = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["alloc"] }
+bevy_app = { version = "0.16", default-features = false, features = [] }
+bevy_ecs = { version = "0.16", default-features = false, features = [] }
+bevy_input = { version = "0.16", default-features = false, features = ["smol_str"] }
+bevy_platform = { version = "0.16", default-features = false, features = ["alloc"] }
 bevy_playdate = { path = "../bevy_playdate" }
-bevy_reflect = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["glam", "smol_str", "smallvec"] }
-bevy_transform = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["libm", "alloc", "bevy-support"] }
+bevy_reflect = { version = "0.16", default-features = false, features = ["glam", "smol_str", "smallvec"] }
+bevy_transform = { version = "0.16", default-features = false, features = ["libm", "alloc", "bevy-support"] }
 
 diagnostic = { path = "../diagnostic", features = ["pd"] }
 hashbrown = { version = "0.15.2", default-features = false, features = ["default-hasher"] }
@@ -40,7 +40,7 @@ name = "Bouncy Bug"
 author = "Niashi"
 version = "0.1.0"
 bundle-id = "com.niashi.bouncybug"
-build-number = 159
+build-number = 161
 description = "TODO: Description for the Bouncy Bug game."
 
 #content-warning = "This game contains mild realistic, violence and bloodshed."

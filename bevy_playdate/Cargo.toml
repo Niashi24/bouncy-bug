@@ -8,15 +8,15 @@ edition = "2024"
 [dependencies]
 bevy_playdate_macros = { path = "bevy_playdate_macros" }
 playdate = { git = "https://github.com/boozook/playdate", rev = "66da849" }
-bevy_ecs = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy_reflect"] }
-bevy_app = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy_reflect"] }
-bevy_platform_support = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["alloc"] }
-bevy_transform = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["libm", "alloc", "bevy-support"] }
-bevy_reflect = { git = "https://github.com/bevyengine/bevy", default-features = false}
-bevy_state = { git = "https://github.com/bevyengine/bevy", default-features = false }
-bevy_time = { git = "https://github.com/bevyengine/bevy", default-features = false }
-bevy_input = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["smol_str"] }
-bevy_math = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["libm", "alloc"] }
+bevy_ecs = { version = "0.16", default-features = false, features = ["bevy_reflect"] }
+bevy_app = { version = "0.16", default-features = false, features = ["bevy_reflect"] }
+bevy_platform = { version = "0.16", default-features = false, features = ["alloc"] }
+bevy_transform = { version = "0.16", default-features = false, features = ["libm", "alloc", "bevy-support"] }
+bevy_reflect = { version = "0.16", default-features = false}
+bevy_state = { version = "0.16", default-features = false }
+bevy_time = { version = "0.16", default-features = false }
+bevy_input = { version = "0.16", default-features = false, features = ["smol_str"] }
+bevy_math = { version = "0.16", default-features = false, features = ["libm", "alloc"] }
 diagnostic = { path = "../diagnostic", features = ["pd"] }
 genawaiter = { git = "https://github.com/Niashi24/genawaiter.git", branch = "no-std", default-features = false }
 derive_more = { version = "1.0.0", default-features = false, features = ["full"] }

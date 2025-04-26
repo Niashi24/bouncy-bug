@@ -3,7 +3,7 @@ use alloc::format;
 use bevy_app::{App, First, FixedUpdate, Plugin, PostUpdate};
 use bevy_ecs::prelude::{IntoScheduleConfigs, ResMut, Resource};
 use bevy_ecs::system::Res;
-use bevy_platform_support::time::Instant;
+use bevy_platform::time::Instant;
 use bevy_time::{Time, TimePlugin};
 use core::cell::UnsafeCell;
 use core::ffi::c_uint;
