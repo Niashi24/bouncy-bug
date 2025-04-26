@@ -6,7 +6,7 @@
  <properties>
   <property name="tileset" value="val"/>
  </properties>
- <image source="tiles.png" width="32" height="32"/>
+ <image source="tiles-table-16-16.png" width="32" height="32"/>
  <tile id="0">
   <properties>
    <property name="file_image" type="file" value="folder/tiles-copy.png"/>

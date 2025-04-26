@@ -30,7 +30,7 @@
     <property name="tile" type="int" value="417"/>
    </properties>
   </object>
-  <object id="4" gid="3" x="0.420212" y="0" width="16" height="16"/>
+  <object id="4" gid="3" x="11.4395" y="30.303" width="16" height="16"/>
  </objectgroup>
  <imagelayer id="5" name="Image Layer 1" offsetx="56" offsety="24">
   <image source="folder/tiles-copy.png" width="32" height="32"/>

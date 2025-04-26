@@ -47,7 +47,6 @@ pub fn toggle_debug_system(input: Res<ButtonInput<PlaydateButton>>, mut debug: R
     use PlaydateButton as PDB;
     const DEBUG_COMBO: [PDB; 4] = [PDB::Up, PDB::Right, PDB::A, PDB::B];
     if input.all_pressed(DEBUG_COMBO) && input.any_just_pressed(DEBUG_COMBO) {
-        println!("here");
         debug.toggle_enabled();
     }
 }

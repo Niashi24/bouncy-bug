@@ -90,10 +90,10 @@ fn control_job(
     if input.just_pressed(PlaydateButton::A) {
         
         commands.spawn(JobTestComponent {
-            job: scheduler.add(1, TestJob(6000), test_job),
+            job: scheduler.add(100, TestJob(6000), test_job),
         })
             .insert((Name::new("Map"), Transform::from_xyz(20.0, 20.0, 0.0)))
-            .insert_loading_asset(MapLoader, 10, "assets/test-map.tmb");
+            .insert_loading_asset(MapLoader, -10, "assets/test-map.tmb");
     }
     
     if input.just_pressed(PlaydateButton::B) {

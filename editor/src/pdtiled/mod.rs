@@ -87,9 +87,9 @@ pub fn convert_layer_data(main_layer: Layer) -> LayerData {
                     let mut output_path = PathBuf::from(ASSET_PATH);
                     // layer.map().source.rel
                     let mut name = layer.map().source.file_stem().unwrap().to_owned();
-                    name.push("-layer-");
+                    name.push("-layer-(");
                     name.push(main_layer.id().to_string());
-                    name.push(".png");
+                    name.push(").png");
                     output_path.push(name.clone());
                     std::fs::create_dir_all(output_path.parent().unwrap()).unwrap();
                     image.save(&output_path).unwrap();

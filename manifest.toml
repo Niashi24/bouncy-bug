@@ -1,3 +1,4 @@
 ﻿assets = [
-    "test-map.tmx"
+    "test-map.tmx",
+    "square.tmx"
 ]

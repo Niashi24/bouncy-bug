@@ -13,6 +13,7 @@ use playdate::graphics::bitmap::Bitmap;
 use playdate::graphics::bitmap::table::BitmapTable;
 use playdate::graphics::error::ApiError;
 use playdate::println;
+use diagnostic::dbg;
 
 pub struct AssetPlugin;
 
@@ -126,6 +127,8 @@ impl BitmapTableAsset {
         let mut len = 0;
 
         table.info::<api::Default>(Some(&mut len), None);
+        
+        dbg!(len);
 
         let mut bitmaps = Vec::with_capacity(len as usize);
         for i in 0..len {

@@ -9,15 +9,28 @@
     ],
     "file.lastUsedOpenFilter": "All Files (*)",
     "fileStates": {
-        "test-map.edit.tmx": {
-            "expandedObjectLayers": [
-                2
-            ],
-            "scale": 1.81,
-            "selectedLayer": 2,
+        "square.edit.tmx": {
+            "scale": 7.0803,
+            "selectedLayer": 0,
             "viewCenter": {
-                "x": 176.7955801104972,
-                "y": 119.33701657458566
+                "x": 36.72160784147564,
+                "y": 23.586571190486282
+            }
+        },
+        "square.tmx": {
+            "scale": 7.2437499999999995,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 32.02761000862812,
+                "y": 51.630716134598785
+            }
+        },
+        "test-map.edit.tmx": {
+            "scale": 1.452,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 211.43250688705237,
+                "y": 8.264462809917376
             }
         },
         "test-map.export.tmx": {
@@ -36,7 +49,7 @@
                 2
             ],
             "scale": 3.4856,
-            "selectedLayer": 1,
+            "selectedLayer": 2,
             "viewCenter": {
                 "x": 143.7342207941244,
                 "y": 81.19118659628185
@@ -51,12 +64,12 @@
     "last.exportedFilePath": "C:/Users/niasp/Documents/Programming/bouncy-bug/assets",
     "last.imagePath": "C:/Users/niasp/Documents/Programming/bouncy-bug/assets",
     "lastUsedTilesetExportFilter": "JSON tileset files (*.tsj *.json)",
-    "map.height": 15,
+    "map.height": 4,
     "map.lastUsedExportFilter": "Tiled map files (*.tmx *.xml)",
     "map.lastUsedFormat": "tmx",
     "map.tileHeight": 16,
     "map.tileWidth": 16,
-    "map.width": 25,
+    "map.width": 4,
     "openFiles": [
         "test-map.tmx",
         "tiles.tsx",
@@ -65,6 +78,7 @@
     "project": "bouncy_bug.tiled-project",
     "property.type": "file",
     "recentFiles": [
+        "square.tmx",
         "test-map.tmx",
         "test-map.edit.tmx",
         "test-map.export.tmx",

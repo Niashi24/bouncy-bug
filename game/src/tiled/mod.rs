@@ -43,6 +43,7 @@ impl Plugin for TiledPlugin {
         // app.add_systems(Last, load_sprite.after(Jobs::run_jobs_system));
         add_loader::<SpriteLoader>(app);
         add_loader::<MapLoader>(app);
+        add_loader::<SpriteTableLoader>(app);
         
         app.register_type::<Static>();
     }
@@ -66,9 +67,6 @@ impl AssetAsync for TiledMap {
 
     async fn load(load_cx: &mut AsyncLoadCtx, path: &str) -> Result<Self, Self::Error> {
         let data = load_compressed_archive::<ArchivedTilemap>(load_cx, path).await?;
-        let access = data.access();
-        dbg!(data.bytes().as_ptr() as usize);
-        dbg!(access);
         
         load_cx.yield_next().await;
 

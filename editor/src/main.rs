@@ -1,14 +1,17 @@
 mod pdtiled;
 
+use std::cell::LazyCell;
 use std::ffi::OsStr;
 use std::fs;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
+use std::sync::LazyLock;
 use hashbrown::HashSet;
 use image::{GenericImage, GenericImageView};
 use indexmap::IndexSet;
+use regex::Regex;
 use tiled::{Properties, PropertyValue, TileLayer};
 use toml_edit::{value, Array, Item, Table, Value};
 use tiledpd::AddDependencies;
@@ -226,6 +229,7 @@ fn process_tileset(path: &Path, assets: &mut Assets) {
     std::fs::write(export_path, &bytes).unwrap();
 }
 
+
 fn process_asset_paths(assets: &mut Assets, asset_paths: Vec<&mut String>, origin: &Path) {
     for asset in asset_paths {
 
@@ -235,30 +239,63 @@ fn process_asset_paths(assets: &mut Assets, asset_paths: Vec<&mut String>, origi
             ["png", "png", "pdi"],
         ];
         
-        let extension = EXTENSIONS.iter()
-            .find(|[x, _, _]| asset.ends_with(x))
-            .copied()
-            .unwrap_or_else(|| {
-                dbg!(&asset);
-                let i = asset.rfind(".").expect("get extension of asset");
-                let extension = asset.split_at(i + 1).1;
-                [extension; 3]
-            });
+        static IMAGE_TABLE_REGEX: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r#"(?<name>.*)-table-\d+(?:-\d+)?\..+"#).unwrap());
         
-        let [pc, _export, pd] = extension;
         
-        let path = Path::new(asset.trim_start_matches("assets\\"));
-        let mut path = origin.parent().unwrap().join(path);
-        path.set_extension(pc);
+        
+        
+        if let Some(captures) = IMAGE_TABLE_REGEX.captures(&asset) {
+            // pc stuff
+            {
+                let path = Path::new(asset.trim_start_matches("assets\\"));
+                let mut path = origin.parent().unwrap().join(path);
+                path = path.strip_prefix("assets\\").unwrap().to_path_buf();
 
-        let mut game = path.clone();
-        game.set_extension(pd);
-        let game = game.to_string_lossy().to_string().replace("\\", "/");
-        *asset = game;
+                assets.add_asset(path, true);
+            }
+            // playdate stuff
+            {
+                // start with "tiles-16-16.png"
+                // now "tiles"
+                let name = &captures["name"];
+                dbg!(name);
+                // now "tiles" (not sure why this is here, but we ball)
+                let path = Path::new(name.trim_start_matches("assets\\"));
+                // now "parent\tiles"
+                let mut path = origin.parent().unwrap().join(path);
+                // now "parent/tiles"
+                *asset = path.to_string_lossy().to_string().replace("\\", "/");
+            }
+            // correct playdate file name, now let's add it to assets
+            
+        } else {
+            let path = Path::new(asset.trim_start_matches("assets\\"));
+            let mut path = origin.parent().unwrap().join(path);
+            
+            let extension = EXTENSIONS.iter()
+                .find(|[x, _, _]| asset.ends_with(x))
+                .copied()
+                .unwrap_or_else(|| {
+                    dbg!(&asset);
+                    let i = asset.rfind(".").expect("get extension of asset");
+                    let extension = asset.split_at(i + 1).1;
+                    [extension; 3]
+                });
 
-        path = path.strip_prefix("assets\\").unwrap().to_path_buf();
+            let [pc, _export, pd] = extension;
 
-        assets.add_asset(path, true);
+            path.set_extension(pc);
+
+            let mut game = path.clone();
+            game.set_extension(pd);
+            let game = game.to_string_lossy().to_string().replace("\\", "/");
+            *asset = game;
+            
+            path = path.strip_prefix("assets\\").unwrap().to_path_buf();
+
+            assets.add_asset(path, true);
+        }
     }
 }
 

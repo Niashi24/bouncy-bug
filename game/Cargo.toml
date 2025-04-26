@@ -12,6 +12,7 @@ crate-type = [
     "rlib",      # to link with bin
 ]
 
+
 [dependencies]
 anyhow = { version = "1.0", default-features = false }
 playdate = { git = "https://github.com/boozook/playdate", rev = "66da849" }
@@ -40,7 +41,7 @@ name = "Bouncy Bug"
 author = "Niashi"
 version = "0.1.0"
 bundle-id = "com.niashi.bouncybug"
-build-number = 161
+build-number = 188
 description = "TODO: Description for the Bouncy Bug game."
 
 #content-warning = "This game contains mild realistic, violence and bloodshed."
@@ -50,9 +51,11 @@ image-path = "img/system"
 launch-sound-path = "sfx/jump"
 
 [package.metadata.playdate.assets]
-"assets/test-map-layer-1.png" = "../assets/export/test-map-layer-1.png"
+"assets/square-layer-(1).png" = "../assets/export/square-layer-(1).png"
+"assets/square.tmb" = "../assets/export/square.tmb"
+"assets/test-map-layer-(1).png" = "../assets/export/test-map-layer-(1).png"
 "assets/test-map.tmb" = "../assets/export/test-map.tmb"
-"assets/tiles.png" = "../assets/export/tiles.png"
+"assets/tiles-table-16-16.png" = "../assets/export/tiles-table-16-16.png"
 "assets/tiles.tsb" = "../assets/export/tiles.tsb"
 "assets/folder/tiles-copy.png" = "../assets/export/folder/tiles-copy.png"
 

@@ -408,12 +408,14 @@ fn new_gen_job<S: Any, E: Any>(
             .map(|j| match j {
                 JobRequest::Yield => JobResponse::None,
                 JobRequest::WithWorld(j) => JobResponse::WithWorld(j(world)),
+                JobRequest::Skip => JobResponse::None,
             })
             .unwrap_or_default();
         
         match generator.resume_with(response) {
             GeneratorState::Yielded(request) => {
                 *last_message = Some(request);
+                
                 WorkResult::Continue(())
             },
             GeneratorState::Complete(Ok(ok)) => WorkResult::Success(ok),
@@ -438,6 +440,7 @@ pub trait GenJobExtensions {
 
 pub enum JobRequest {
     Yield,
+    Skip,
     WithWorld(Box<dyn FnOnce(&mut World) -> Box<dyn Any + Send> + Send>)
 }
 
@@ -521,9 +524,6 @@ pub async fn load_file_bytes(load_cx: &mut AsyncLoadCtx, path: &str) -> Result<V
     
         // println!()
         let n = file.read(buf)?;
-        println!("N: {}", n);
-        println!("N: {}", n);
-        println!("N: {}", n);
     
         if n == 0 {
             break; // EOF
