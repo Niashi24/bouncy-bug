@@ -19,7 +19,7 @@ use derive_more::Deref;
 use pd::graphics::error::ApiError;
 use pd::sys::ffi::LCDBitmapFlip;
 // use tiled::{DefaultResourceCache, Loader, Map, ResourceCache, ResourcePath, Template, Tileset};
-use bevy_playdate::asset::{AssetAsync, AssetCache, BitmapAsset, BitmapTableAsset, ResAssetCache};
+use bevy_playdate::asset::{AssetAsync, AssetCache, BitmapAsset, BitmapRef, BitmapTableAsset, ResAssetCache};
 use bevy_playdate::file::{BufferedWriter, FileHandle};
 use bevy_playdate::jobs::{AsyncLoadCtx, GenJobExtensions, JobFinished, JobHandle, Jobs, JobsScheduler};
 use bevy_playdate::sprite::Sprite;
@@ -324,6 +324,15 @@ pub struct SpriteLoader {
     pub center: [f32; 2],
 }
 
+impl SpriteLoader {
+    pub fn add_sprite(&self, commands: &mut EntityCommands, image: BitmapRef) {
+        let sprite = Sprite::new_from_bitmap(image, LCDBitmapFlip::kBitmapUnflipped);
+        sprite.set_center(self.center[0], self.center[1]);
+
+        commands.insert(sprite);
+    }
+}
+
 impl Default for SpriteLoader {
     fn default() -> Self {
         Self {
@@ -341,11 +350,8 @@ impl AssetLoader for SpriteLoader {
         result: Result<Arc<Self::Asset>, <<Self as AssetLoader>::Asset as AssetAsync>::Error>,
     ) {
         let image = result.unwrap();
-        
-        let sprite = Sprite::new_from_bitmap(image, LCDBitmapFlip::kBitmapUnflipped);
-        sprite.set_center(self.center[0], self.center[1]);
 
-        commands.insert(sprite);
+        self.add_sprite(commands, image.into());
     }
 }
 
@@ -392,10 +398,10 @@ impl AssetLoader for SpriteTableLoader {
     type Asset = BitmapTableAsset;
 
     fn on_finish_load(&self, commands: &mut EntityCommands, result: Result<Arc<Self::Asset>, <<Self as AssetLoader>::Asset as AssetAsync>::Error>) {
-        let bitmap = result
-            .map(|table| table.get(self.index).unwrap());
-        
-        self.sprite_loader.on_finish_load(commands, bitmap)
+        let table = result.unwrap();
+        let image = BitmapRef::from_table(table, self.index);
+
+        self.sprite_loader.add_sprite(commands, image);
     }
 }
 

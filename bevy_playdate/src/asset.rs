@@ -5,7 +5,9 @@ use alloc::vec::Vec;
 use bevy_app::{App, Plugin};
 use bevy_ecs::prelude::Resource;
 use bevy_platform::sync::{Arc, LazyLock, RwLock, Weak};
+use derive_more::derive::{From, Index};
 use core::any::{Any, TypeId};
+use core::ops::Index;
 use derive_more::Deref;
 use hashbrown::HashMap;
 use playdate::graphics::api;
@@ -105,7 +107,45 @@ pub struct BitmapTableAsset {
     // only need this to keep ownership of images (freed on drop)
     _table: BitmapTable,
     // table isn't going to be changed ever so we can use a Boxed slice
-    bitmaps: Box<[Arc<BitmapAsset>]>,
+    bitmaps: Box<[BitmapAsset]>,
+}
+
+impl Index<usize> for BitmapTableAsset {
+    type Output = BitmapAsset;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.bitmaps[index]
+    }
+}
+
+impl BitmapTableAsset {
+    pub fn from_table(table: BitmapTable) -> Self {
+        let mut len = 0;
+
+        table.info::<api::Default>(Some(&mut len), None);
+        
+        dbg!(len);
+
+        let mut bitmaps = Vec::with_capacity(len as usize);
+        for i in 0..len {
+            let bitmap = table.get(i).unwrap();
+            let bitmap = BitmapAsset(bitmap);
+            bitmaps.push(bitmap);
+        }
+
+        Self {
+            _table: table,
+            bitmaps: bitmaps.into_boxed_slice(),
+        }
+    }
+
+    pub fn get(&self, i: usize) -> Option<&BitmapAsset> {
+        self.bitmaps.get(i)
+    }
+    
+    pub fn len(&self) -> usize {
+        self.bitmaps.len()
+    }
 }
 
 impl AssetAsync for BitmapTableAsset {
@@ -122,34 +162,33 @@ impl AssetAsync for BitmapTableAsset {
     }
 }
 
-impl BitmapTableAsset {
-    pub fn from_table(table: BitmapTable) -> Self {
-        let mut len = 0;
+#[derive(From, Clone)]
+pub enum BitmapRef {
+    #[from]
+    Bitmap(Arc<BitmapAsset>),
+    Table(Arc<BitmapTableAsset>, usize),
+}
 
-        table.info::<api::Default>(Some(&mut len), None);
-        
-        dbg!(len);
-
-        let mut bitmaps = Vec::with_capacity(len as usize);
-        for i in 0..len {
-            let bitmap = table.get(i).unwrap();
-            let bitmap = BitmapAsset(bitmap);
-            let bitmap = Arc::new(bitmap);
-            bitmaps.push(bitmap);
-        }
-
-        Self {
-            _table: table,
-            bitmaps: bitmaps.into_boxed_slice(),
-        }
+impl BitmapRef {
+    pub fn from_table(table: Arc<BitmapTableAsset>, idx: usize) -> Self {
+        Self::Table(table, idx)
     }
 
-    pub fn get(&self, i: usize) -> Option<Arc<BitmapAsset>> {
-        self.bitmaps.get(i).map(Arc::clone)
+    pub fn from_bitmap(bitmap: Arc<BitmapAsset>) -> Self {
+        Self::from(bitmap)
     }
-    
-    pub fn len(&self) -> usize {
-        self.bitmaps.len()
+
+    pub fn bitmap(&self) -> &BitmapAsset {
+        self.as_ref()
+    }
+}
+
+impl AsRef<BitmapAsset> for BitmapRef {
+    fn as_ref(&self) -> &BitmapAsset {
+        match self {
+            BitmapRef::Bitmap(bitmap_asset) => &bitmap_asset,
+            BitmapRef::Table(bitmap_table_asset, i) => &bitmap_table_asset[*i],
+        }
     }
 }
 

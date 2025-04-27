@@ -16,7 +16,7 @@ use playdate::graphics::{BitmapFlip, BitmapFlipExt, Graphics};
 use playdate::sprite::{draw_sprites, Sprite as PDSprite};
 use playdate::sys::ffi::LCDBitmapFlip;
 use playdate::sys::traits::AsRaw;
-use crate::asset::BitmapAsset;
+use crate::asset::{BitmapAsset, BitmapRef};
 
 pub struct SpritePlugin;
 
@@ -46,7 +46,7 @@ pub struct Sprite {
     #[deref]
     spr: PDSprite,
     /// TODO: Replace with Handle
-    bitmap: Arc<BitmapAsset>,
+    bitmap: BitmapRef,
 }
 
 fn add_to_display_list(w: DeferredWorld, HookContext { entity: e, .. }: HookContext) {
@@ -69,12 +69,12 @@ pub fn empty_bitmap() -> Arc<BitmapAsset> {
 impl Sprite {
     /// Creates a new, empty Sprite
     pub fn new() -> Self {
-        Self::new_from_bitmap(empty_bitmap(), BitmapFlip::Unflipped)
+        Self::new_from_bitmap(empty_bitmap().into(), BitmapFlip::Unflipped)
     }
 
-    pub fn new_from_bitmap(bitmap: Arc<BitmapAsset>, flip: BitmapFlip) -> Self {
+    pub fn new_from_bitmap(bitmap: BitmapRef, flip: BitmapFlip) -> Self {
         let spr = PDSprite::new();
-        spr.set_image(&bitmap.0, flip);
+        spr.set_image(&bitmap.as_ref().0, flip);
 
         Self { spr, bitmap }
     }
@@ -97,10 +97,10 @@ impl Sprite {
             api!(graphics).popContext.unwrap()();
         }
 
-        Self::new_from_bitmap(Arc::new(BitmapAsset(image)), BitmapFlip::Unflipped)
+        Self::new_from_bitmap(Arc::new(BitmapAsset(image)).into(), BitmapFlip::Unflipped)
     }
 
-    pub fn bitmap(&self) -> Arc<BitmapAsset> {
+    pub fn bitmap(&self) -> BitmapRef {
         self.bitmap.clone()
     }
 
@@ -150,14 +150,15 @@ impl SpriteRotation {
     /// Pre-computes a rotation of
     pub fn cached(sprite: &Sprite, resolution: usize) -> Self {
         let mut directions = Vec::with_capacity(resolution);
-        for i in 0..resolution {
-            let angle = i as f32 / resolution as f32 * 360.0;
-            let rotated = sprite
-                .bitmap.0
-                .rotated_clone(angle, 1.0, 1.0)
-                .expect("precompute bitmap rotated clone");
-            directions.push(Arc::new(rotated));
-        }
+        // for i in 0..resolution {
+        //     let angle = i as f32 / resolution as f32 * 360.0;
+        //     let rotated = sprite
+        //         .bitmap.0
+        //         .rotated_clone(angle, 1.0, 1.0)
+        //         .expect("precompute bitmap rotated clone");
+        //     directions.push(Arc::new(rotated));
+        // }
+        todo!();
 
         let rotation_info = RotatedInfo {
             center: sprite.center(),

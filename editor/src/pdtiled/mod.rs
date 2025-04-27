@@ -266,7 +266,7 @@ pub fn convert_property(property: PropertyValue) -> PVPD {
 
 pub fn convert_tileset(tileset: tiled::Tileset) -> Tileset {
     let tiles = tileset.tiles()
-        .map(|(i, t)| TileData {
+        .map(|(_i, t)| TileData {
             properties: convert_properties(t.properties.clone()),
         })
         .collect();

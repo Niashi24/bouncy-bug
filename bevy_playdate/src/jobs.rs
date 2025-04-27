@@ -11,6 +11,7 @@ use bevy_ecs::world::World;
 use core::any::Any;
 use core::cmp::Ordering;
 use core::marker::PhantomData;
+use core::mem::MaybeUninit;
 use core::ops::{Deref, DerefMut};
 use bevy_app::{App, Last, Plugin};
 use bevy_ecs::event::{Event, EventWriter};
