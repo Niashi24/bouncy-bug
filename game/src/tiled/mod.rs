@@ -325,11 +325,11 @@ pub struct SpriteLoader {
 }
 
 impl SpriteLoader {
-    pub fn add_sprite(&self, commands: &mut EntityCommands, image: BitmapRef) {
+    pub fn to_sprite(&self, image: BitmapRef) -> Sprite {
         let sprite = Sprite::new_from_bitmap(image, LCDBitmapFlip::kBitmapUnflipped);
         sprite.set_center(self.center[0], self.center[1]);
 
-        commands.insert(sprite);
+        sprite
     }
 }
 
@@ -351,7 +351,7 @@ impl AssetLoader for SpriteLoader {
     ) {
         let image = result.unwrap();
 
-        self.add_sprite(commands, image.into());
+        commands.insert(self.to_sprite(image.into()));
     }
 }
 
@@ -401,7 +401,7 @@ impl AssetLoader for SpriteTableLoader {
         let table = result.unwrap();
         let image = BitmapRef::from_table(table, self.index);
 
-        self.sprite_loader.add_sprite(commands, image);
+        commands.insert(self.sprite_loader.to_sprite(image));
     }
 }
 
