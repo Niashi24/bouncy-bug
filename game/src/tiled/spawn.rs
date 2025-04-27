@@ -98,7 +98,6 @@ pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
 
                                 let mut tile_entity = c.spawn((
                                     Name::new("Tile"),
-                                    Transform::from_xyz(x as f32, y as f32, 0.0),
                                 ));
 
                                 // let mut tile_entity = layer_e.

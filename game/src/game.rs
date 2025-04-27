@@ -1,12 +1,12 @@
-﻿use alloc::format;
-use alloc::string::ToString;
+﻿use alloc::{format, vec};
+use alloc::string::{String, ToString};
 use bevy_app::{App, Last, Plugin, Startup};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::name::Name;
-use bevy_ecs::prelude::{Component, IntoScheduleConfigs};
+use bevy_ecs::prelude::{Children, Component, IntoScheduleConfigs, With};
 use bevy_ecs::system::{Commands, In, Query, Res, ResMut};
 use bevy_input::ButtonInput;
-use bevy_transform::prelude::Transform;
+use bevy_transform::prelude::{GlobalTransform, Transform};
 use bevy_playdate::asset::ResAssetCache;
 use bevy_playdate::input::PlaydateButton;
 use bevy_playdate::jobs::{JobHandle, JobStatusRef, Jobs, JobsScheduler, WorkResult};
@@ -16,7 +16,9 @@ use pd::graphics::color::{Color, LCDColorConst};
 use pd::graphics::fill_rect;
 use pd::graphics::text::draw_text;
 use pd::sys::ffi::LCDColor;
+use diagnostic::dbg;
 use crate::tiled::{JobCommandsExt, Map, MapLoader, TiledMap, TiledSet};
+use crate::tiled::spawn::MapHandle;
 // use crate::pdtiled::loader::TiledLoader;
 
 pub struct GamePlugin;
@@ -86,11 +88,14 @@ fn control_job(
     mut commands: Commands,
     input: Res<ButtonInput<PlaydateButton>>,
     asset_cache: Res<ResAssetCache>,
+    q_map_root: Query<(&Name, &Children), With<MapHandle>>,
+    q_name: Query<(&Name, Option<&Children>)>,
+    q_transform: Query<&GlobalTransform>,
 ) {
     if input.just_pressed(PlaydateButton::A) {
         
         commands.spawn(JobTestComponent {
-            job: scheduler.add(100, TestJob(6000), test_job),
+            job: scheduler.add(100, TestJob(9500), test_job),
         })
             .insert((Name::new("Map"), Transform::from_xyz(20.0, 20.0, 0.0)))
             .insert_loading_asset(MapLoader, -10, "assets/test-map.tmb");
@@ -109,6 +114,13 @@ fn control_job(
     
     if input.just_pressed(PlaydateButton::Down) {
         asset_cache.0.try_read().unwrap().debug_loaded();
+        dbg!(q_transform.iter().len());
+        for (name, children) in q_map_root {
+            println!("{}", name);
+            for &child in children {
+                print_recursive(0, child, &q_name);
+            }
+        }
     }
     // let mut file = FileHandle::read_only("assets/test-map.tmx").unwrap();
     // let mut bytes = Vec::new();
@@ -122,6 +134,19 @@ fn control_job(
     // for event in reader.into_iter() {
     //     println!("{event:?}");
     // }
+}
+
+fn print_recursive(
+    level: usize,
+    entity: Entity,
+    q_name: &Query<(&Name, Option<&Children>)>,
+) {
+    let (name, children) = q_name.get(entity).unwrap();
+    println!("{}↳ {}", String::from_utf8(vec![b' '; level * 2]).unwrap(), name);
+    let Some(children) = children else { return; };
+    for &child in children {
+        print_recursive(level + 1, child, q_name);
+    }
 }
 
 #[derive(Component)]

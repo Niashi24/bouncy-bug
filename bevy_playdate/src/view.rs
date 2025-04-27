@@ -18,6 +18,7 @@ impl Plugin for ViewPlugin {
             view_system
                 .after(bevy_transform::systems::propagate_parent_transforms)
                 .after(bevy_transform::systems::sync_simple_transforms)
+                .after(bevy_transform::systems::mark_dirty_trees)
                 .before(draw_sprites),
         );
     }

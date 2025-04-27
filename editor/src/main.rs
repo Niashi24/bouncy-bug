@@ -42,7 +42,7 @@ fn main() -> anyhow::Result<()> {
         
         // get all files in export folder (recursively)
         let mut files = Vec::new();
-        let mut directories = vec![PathBuf::from("assets/export")];
+        let mut directories = vec![PathBuf::from("assets\\export")];
         while let Some(directory) = directories.pop() {
             for file in fs::read_dir(&directory)? {
                 let file = file?;
@@ -65,7 +65,7 @@ fn main() -> anyhow::Result<()> {
         // fs::read_di
         // for asset in assets {
         //     let asset = asset.to_string_lossy().to_string();
-        //     let destination = format!("assets/{}", asset);
+        //     let destination = format!("assets\\{}", asset);
         //     let source = format!("../{}/{}/{}", ASSET_PATH, EXPORT_FOLDER, asset);
         //     asset_table.insert(&destination, source.into());
         // }
@@ -248,9 +248,9 @@ fn process_asset_paths(assets: &mut Assets, asset_paths: Vec<&mut String>, origi
         if let Some(captures) = IMAGE_TABLE_REGEX.captures(&asset) {
             // pc stuff
             {
-                let path = Path::new(asset.trim_start_matches("assets/"));
+                let path = Path::new(asset.trim_start_matches("assets\\"));
                 let mut path = origin.parent().unwrap().join(path);
-                path = path.strip_prefix("assets/").unwrap().to_path_buf();
+                path = path.strip_prefix("assets\\").unwrap().to_path_buf();
 
                 assets.add_asset(path, true);
             }
@@ -261,7 +261,7 @@ fn process_asset_paths(assets: &mut Assets, asset_paths: Vec<&mut String>, origi
                 let name = &captures["name"];
                 dbg!(name);
                 // now "tiles" (not sure why this is here, but we ball)
-                let path = Path::new(name.trim_start_matches("assets/"));
+                let path = Path::new(name.trim_start_matches("assets\\"));
                 // now "parent\tiles"
                 let mut path = origin.parent().unwrap().join(path);
                 // now "parent/tiles"
@@ -270,7 +270,7 @@ fn process_asset_paths(assets: &mut Assets, asset_paths: Vec<&mut String>, origi
             // correct playdate file name, now let's add it to assets
             
         } else {
-            let path = Path::new(asset.trim_start_matches("assets/"));
+            let path = Path::new(asset.trim_start_matches("assets\\"));
             let mut path = origin.parent().unwrap().join(path);
             
             let extension = EXTENSIONS.iter()
@@ -292,7 +292,7 @@ fn process_asset_paths(assets: &mut Assets, asset_paths: Vec<&mut String>, origi
             let game = game.to_string_lossy().to_string().replace("\\", "/");
             *asset = game;
             
-            path = path.strip_prefix("assets/").unwrap().to_path_buf();
+            path = path.strip_prefix("assets\\").unwrap().to_path_buf();
 
             assets.add_asset(path, true);
         }
@@ -345,7 +345,7 @@ pub mod path {
 }
 
 /// Copies file to export folder. Path must be relative to `assets` folder.
-/// I.e. `"tiles.png"` corresponds to `"./assets/tiles.png"`
+/// I.e. `"tiles.png"` corresponds to `"./assets\\tiles.png"`
 pub fn process_default(path: &Path) {
     let old_path = Path::new(ASSET_PATH).join(path);
     let new_path = Path::new(ASSET_PATH).join(EXPORT_FOLDER).join(path);
