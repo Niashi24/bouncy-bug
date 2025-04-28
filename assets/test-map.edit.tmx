@@ -25,14 +25,14 @@
  </layer>
  <objectgroup id="2" name="Object Layer 1">
   <object id="2" gid="2" x="200.131" y="16.7231" width="16" height="16"/>
-  <object id="3" gid="2147483651" x="217.387" y="29.4654" width="16" height="16" rotation="90">
+  <object id="3" gid="2147483651" x="-27.3577" y="27.648" width="16" height="16" rotation="90">
    <properties>
     <property name="tile" type="int" value="417"/>
    </properties>
   </object>
   <object id="4" gid="3" x="11.4395" y="30.303" width="16" height="16"/>
  </objectgroup>
- <imagelayer id="5" name="Image Layer 1" offsetx="56" offsety="24">
+ <imagelayer id="5" name="Image Layer 1" offsetx="-31.4038" offsety="89.0976">
   <image source="folder/tiles-copy.png" width="32" height="32"/>
  </imagelayer>
 </map>

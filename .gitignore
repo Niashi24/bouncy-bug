@@ -5,6 +5,9 @@ Cargo.lock
 /.sentry-native
 
 assets/export
+#assets/
+*.tmx
+!*.edit.tmx
 
 bevy_playdate/Cargo.lock
 bevy_playdate/target

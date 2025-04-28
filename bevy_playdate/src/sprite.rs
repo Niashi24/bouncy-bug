@@ -1,3 +1,4 @@
+use crate::transform::Transform;
 use bevy_ecs::schedule::IntoScheduleConfigs;
 use crate::angle::PDAngle;
 use bevy_platform::sync::Arc;
@@ -6,7 +7,6 @@ use bevy_app::{App, Plugin, PostUpdate};
 use bevy_ecs::component::{Component, HookContext};
 use bevy_ecs::schedule::ScheduleLabel;
 use bevy_ecs::world::{DeferredWorld, World};
-use bevy_transform::prelude::Transform;
 use derive_more::Deref;
 use playdate::api;
 use playdate::graphics::api::Cache;
@@ -41,7 +41,7 @@ pub fn run_post_sprite(world: &mut World) {
 #[derive(Component, Clone, Deref)]
 #[component(on_add = add_to_display_list)]
 #[component(on_replace = remove_from_display_list)]
-#[require(Transform, SpriteRotation)]
+#[require(Transform)]
 pub struct Sprite {
     #[deref]
     spr: PDSprite,

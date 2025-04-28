@@ -2,21 +2,20 @@ use alloc::collections::VecDeque;
 use core::time::Duration;
 use bevy_app::{App, Last, Plugin, PostUpdate};
 use bevy_ecs::prelude::{IntoScheduleConfigs, Resource};
-use bevy_ecs::system::{Res, ResMut};
+use bevy_ecs::system::{Query, Res, ResMut};
 use bevy_input::ButtonInput;
 use bevy_math::IVec2;
 use playdate::{api, println};
 use playdate::graphics::bitmap::LCDColorConst;
-use playdate::graphics::{draw_line, fill_rect};
+use playdate::graphics::{draw_line, fill_rect, Graphics};
 use playdate::graphics::text::draw_text;
 use playdate::sprite::draw_sprites;
 use playdate::sys::ffi::LCDColor;
 use playdate::system::System;
 use crate::input::PlaydateButton;
 use crate::jobs::Jobs;
+use crate::sprite::Sprite;
 use crate::time::RunningTimer;
-
-
 
 pub struct DebugPlugin;
 
@@ -27,7 +26,9 @@ impl Plugin for DebugPlugin {
                 PostUpdate,
                 (
                     toggle_debug_system,
-                    draw_fps_top_left.after(draw_sprites).run_if(in_debug),
+                    (draw_fps_top_left, debug_sprite)
+                        .after(draw_sprites)
+                        .run_if(in_debug),
                 ).chain(),
             );
         app.add_plugins(FpsLinesPlugin);
@@ -36,6 +37,15 @@ impl Plugin for DebugPlugin {
 
 pub fn in_debug(debug: Res<Debug>) -> bool {
     debug.enabled
+}
+
+fn debug_sprite(sprite: Query<&Sprite>) {
+    let graphics = Graphics::Cached();
+    for spr in sprite.iter() {
+        // let (x, y) = spr.position();
+        let rect = spr.bounds();
+        graphics.draw_rect(rect.x as i32, rect.y as i32, rect.width as i32, rect.height as i32, LCDColor::XOR);
+    }
 }
 
 pub fn draw_fps_top_left() {

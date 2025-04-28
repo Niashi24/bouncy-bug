@@ -11,6 +11,7 @@ pub mod time;
 pub mod view;
 pub mod file;
 pub mod asset;
+pub mod transform;
 
 pub use bevy_playdate_macros::init_app;
 
@@ -28,6 +29,7 @@ impl Plugin for DefaultPlugins {
             time::PDTimePlugin,
             debug::DebugPlugin,
             view::ViewPlugin,
+            transform::TransformPlugin,
             asset::AssetPlugin,
         ));
     }

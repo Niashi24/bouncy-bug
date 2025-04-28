@@ -6,7 +6,7 @@ use bevy_ecs::name::Name;
 use bevy_ecs::prelude::{Children, Component, IntoScheduleConfigs, With};
 use bevy_ecs::system::{Commands, In, Query, Res, ResMut};
 use bevy_input::ButtonInput;
-use bevy_transform::prelude::{GlobalTransform, Transform};
+use bevy_playdate::transform::{GlobalTransform, Transform};
 use bevy_playdate::asset::ResAssetCache;
 use bevy_playdate::input::PlaydateButton;
 use bevy_playdate::jobs::{JobHandle, JobStatusRef, Jobs, JobsScheduler, WorkResult};
@@ -17,7 +17,7 @@ use pd::graphics::fill_rect;
 use pd::graphics::text::draw_text;
 use pd::sys::ffi::LCDColor;
 use diagnostic::dbg;
-use crate::tiled::{JobCommandsExt, Map, MapLoader, TiledMap, TiledSet};
+use crate::tiled::{JobCommandsExt, Map, MapLoader, SpriteLoader, SpriteTableLoader, TiledMap, TiledSet};
 use crate::tiled::spawn::MapHandle;
 // use crate::pdtiled::loader::TiledLoader;
 
@@ -48,6 +48,15 @@ fn test_spawn_job(mut commands: Commands, mut jobs: ResMut<JobsScheduler>) {
     commands.spawn(JobTestComponent {
         job: jobs.add(1, TestJob(6000), test_job),
     });
+    
+    commands.spawn((
+        Name::new("Test sprite"),
+        Transform::from_xy(20.0, 200.0),
+    ))
+        .insert_loading_asset(SpriteTableLoader {
+            sprite_loader: SpriteLoader::default(),
+            index: 2,
+        }, 0, "assets/tiles");
 }
 
 
@@ -91,13 +100,14 @@ fn control_job(
     q_map_root: Query<(&Name, &Children), With<MapHandle>>,
     q_name: Query<(&Name, Option<&Children>)>,
     q_transform: Query<&GlobalTransform>,
+    q_sprite: Query<&Sprite>,
 ) {
     if input.just_pressed(PlaydateButton::A) {
         
         commands.spawn(JobTestComponent {
             job: scheduler.add(100, TestJob(9500), test_job),
         })
-            .insert((Name::new("Map"), Transform::from_xyz(20.0, 20.0, 0.0)))
+            .insert((Name::new("Map"), Transform::from_xy(100.0, 20.0)))
             .insert_loading_asset(MapLoader, -10, "assets/test-map.tmb");
     }
     
@@ -113,14 +123,15 @@ fn control_job(
     }
     
     if input.just_pressed(PlaydateButton::Down) {
-        asset_cache.0.try_read().unwrap().debug_loaded();
-        dbg!(q_transform.iter().len());
         for (name, children) in q_map_root {
             println!("{}", name);
             for &child in children {
                 print_recursive(0, child, &q_name);
             }
         }
+        asset_cache.0.try_read().unwrap().debug_loaded();
+        dbg!(q_transform.iter().len());
+        dbg!(q_sprite.iter().len());
     }
     // let mut file = FileHandle::read_only("assets/test-map.tmx").unwrap();
     // let mut bytes = Vec::new();

@@ -78,8 +78,8 @@
     "project": "bouncy_bug.tiled-project",
     "property.type": "file",
     "recentFiles": [
-        "square.tmx",
         "test-map.tmx",
+        "square.tmx",
         "test-map.edit.tmx",
         "test-map.export.tmx",
         "tiles.tsx"

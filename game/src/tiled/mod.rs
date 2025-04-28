@@ -322,12 +322,14 @@ impl<A: AssetLoader> LoadingAsset<A> {
 #[derive(Copy, Clone)]
 pub struct SpriteLoader {
     pub center: [f32; 2],
+    pub z_index: i16,
 }
 
 impl SpriteLoader {
     pub fn to_sprite(&self, image: BitmapRef) -> Sprite {
         let sprite = Sprite::new_from_bitmap(image, LCDBitmapFlip::kBitmapUnflipped);
         sprite.set_center(self.center[0], self.center[1]);
+        sprite.set_z_index(self.z_index);
 
         sprite
     }
@@ -337,6 +339,7 @@ impl Default for SpriteLoader {
     fn default() -> Self {
         Self {
             center: [0.5; 2],
+            z_index: 0,
         }
     }
 }
