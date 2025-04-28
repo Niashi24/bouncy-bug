@@ -19,9 +19,12 @@ playdate = { git = "https://github.com/boozook/playdate", rev = "66da849" }
 bevy_app = { version = "0.16", default-features = false, features = [] }
 bevy_ecs = { version = "0.16", default-features = false, features = [] }
 bevy_input = { version = "0.16", default-features = false, features = ["smol_str"] }
+bevy_math = { version = "0.16", default-features = false, features = ["libm", "alloc"] }
 bevy_platform = { version = "0.16", default-features = false, features = ["alloc"] }
 bevy_playdate = { path = "../bevy_playdate" }
 bevy_reflect = { version = "0.16", default-features = false, features = ["glam", "smol_str", "smallvec"] }
+bevy_time = { version = "0.16", default-features = false }
+
 
 diagnostic = { path = "../diagnostic", features = ["pd"] }
 hashbrown = { version = "0.15.2", default-features = false, features = ["default-hasher"] }
@@ -40,7 +43,7 @@ name = "Bouncy Bug"
 author = "Niashi"
 version = "0.1.0"
 bundle-id = "com.niashi.bouncybug"
-build-number = 230
+build-number = 242
 description = "TODO: Description for the Bouncy Bug game."
 
 #content-warning = "This game contains mild realistic, violence and bloodshed."

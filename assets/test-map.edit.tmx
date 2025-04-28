@@ -24,7 +24,11 @@
 </data>
  </layer>
  <objectgroup id="2" name="Object Layer 1">
-  <object id="2" gid="2" x="200.131" y="16.7231" width="16" height="16"/>
+  <object id="2" name="X Camera" gid="2" x="200.131" y="16.7231" width="16" height="16">
+   <properties>
+    <property name="camera" type="class" propertytype="bevy_playdate::view::Camera"/>
+   </properties>
+  </object>
   <object id="3" gid="2147483651" x="-27.3577" y="27.648" width="16" height="16" rotation="90">
    <properties>
     <property name="tile" type="int" value="417"/>

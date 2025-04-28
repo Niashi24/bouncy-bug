@@ -7,6 +7,7 @@ use bevy_ecs::prelude::*;
 use bevy_math::{Affine2, Affine3A, EulerRot, Vec2};
 use core::ops::Deref;
 use bevy_reflect::Reflect;
+use playdate::graphics::Graphics;
 use playdate::sprite::draw_sprites;
 
 pub struct ViewPlugin;
@@ -35,25 +36,13 @@ pub fn view_system(
     camera: Option<Single<Ref<GlobalTransform>, With<Camera>>>,
     mut q_sprites: Query<(Ref<GlobalTransform>, &mut Sprite)>,
 ) {
-    if let Some(_camera_transform) = camera {
-        todo!("update camera view to new transforms")
-        // let inv = camera_transform.affine().inverse();
-        // 
-        // if camera_transform.deref().is_changed() {
-        //     for (transform, rot, mut spr) in q_sprites.iter_mut() {
-        //         let relative = inv * transform.deref().affine();
-        //         set_sprite_affine(spr.as_mut(), rot, relative);
-        //     }
-        // } else {
-        //     for (transform, rot, mut spr) in q_sprites.iter_mut() {
-        //         if !transform.is_changed() {
-        //             continue;
-        //         }
-        // 
-        //         let relative = inv * transform.deref().affine();
-        //         set_sprite_affine(spr.as_mut(), rot, relative);
-        //     }
-        // }
+    if let Some(camera_transform) = camera {
+        if camera_transform.is_changed() {
+            let mut pos = camera_transform.0;
+            pos += Vec2::new(-200.0, -120.0);
+            
+            Graphics::Default().set_draw_offset(-pos.x as i32, -pos.y as i32);
+        }
     } else {
         for (transform, mut spr) in q_sprites.iter_mut() {
             if !transform.is_changed() && !spr.is_added() {

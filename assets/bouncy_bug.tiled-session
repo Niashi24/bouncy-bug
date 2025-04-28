@@ -63,6 +63,7 @@
     },
     "last.exportedFilePath": "C:/Users/niasp/Documents/Programming/bouncy-bug/assets",
     "last.imagePath": "C:/Users/niasp/Documents/Programming/bouncy-bug/assets",
+    "last.objectTypesPath": "C:/Users/niasp/Documents/PlaydateSDK/Disk/Data/com.niashi.bouncybug/type-export.json",
     "lastUsedTilesetExportFilter": "JSON tileset files (*.tsj *.json)",
     "map.height": 4,
     "map.lastUsedExportFilter": "Tiled map files (*.tmx *.xml)",
@@ -76,7 +77,7 @@
         "test-map.export.tmx"
     ],
     "project": "bouncy_bug.tiled-project",
-    "property.type": "file",
+    "property.type": "bevy_playdate::view::Camera",
     "recentFiles": [
         "test-map.tmx",
         "square.tmx",

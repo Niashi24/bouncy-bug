@@ -1,11 +1,13 @@
 ﻿use alloc::{format, vec};
 use alloc::string::{String, ToString};
-use bevy_app::{App, Last, Plugin, Startup};
+use bevy_app::{App, Last, Plugin, Startup, Update};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::name::Name;
 use bevy_ecs::prelude::{Children, Component, IntoScheduleConfigs, With};
-use bevy_ecs::system::{Commands, In, Query, Res, ResMut};
+use bevy_ecs::system::{Commands, In, Query, Res, ResMut, Single};
 use bevy_input::ButtonInput;
+use bevy_math::Vec2;
+use bevy_time::Time;
 use bevy_playdate::transform::{GlobalTransform, Transform};
 use bevy_playdate::asset::ResAssetCache;
 use bevy_playdate::input::PlaydateButton;
@@ -16,6 +18,8 @@ use pd::graphics::color::{Color, LCDColorConst};
 use pd::graphics::fill_rect;
 use pd::graphics::text::draw_text;
 use pd::sys::ffi::LCDColor;
+use bevy_playdate::debug::Debug;
+use bevy_playdate::view::Camera;
 use diagnostic::dbg;
 use crate::tiled::{JobCommandsExt, Map, MapLoader, SpriteLoader, SpriteTableLoader, TiledMap, TiledSet};
 use crate::tiled::spawn::MapHandle;
@@ -28,6 +32,7 @@ impl Plugin for GamePlugin {
         app.add_systems(Startup, test_spawn_job);
         // app.add_systems(Startup, draw_test);
         // app.add_systems(Update, draw_text_test);
+        app.add_systems(Update, move_camera);
         app.add_systems(Last, (control_job, display_job).chain().after(Jobs::run_jobs_system));
     }
 }
@@ -101,6 +106,7 @@ fn control_job(
     q_name: Query<(&Name, Option<&Children>)>,
     q_transform: Query<&GlobalTransform>,
     q_sprite: Query<&Sprite>,
+    debug: Res<Debug>,
 ) {
     if input.just_pressed(PlaydateButton::A) {
         
@@ -122,7 +128,7 @@ fn control_job(
         // }
     }
     
-    if input.just_pressed(PlaydateButton::Down) {
+    if input.just_pressed(PlaydateButton::Down) && debug.enabled {
         for (name, children) in q_map_root {
             println!("{}", name);
             for &child in children {
@@ -145,6 +151,23 @@ fn control_job(
     // for event in reader.into_iter() {
     //     println!("{event:?}");
     // }
+}
+
+fn move_camera(
+    mut camera: Option<Single<&mut Transform, With<Camera>>>,
+    input: Res<ButtonInput<PlaydateButton>>,
+    time: Res<Time>
+) {
+    let Some(mut camera) = camera else { return; };
+    
+    let mut x = 0;
+    x += input.pressed(PlaydateButton::Right) as i32;
+    x -= input.pressed(PlaydateButton::Left) as i32;
+    let mut y = 0;
+    y += input.pressed(PlaydateButton::Down) as i32;
+    y -= input.pressed(PlaydateButton::Up) as i32;
+    
+    camera.0 += Vec2::new(x as f32, y as f32) * time.delta_secs() * 100.0;
 }
 
 fn print_recursive(
