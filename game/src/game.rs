@@ -1,6 +1,6 @@
 ﻿use alloc::{format, vec};
 use alloc::string::{String, ToString};
-use bevy_app::{App, Last, Plugin, Startup, Update};
+use bevy_app::{App, Last, Plugin, PostUpdate, Startup, Update};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::name::Name;
 use bevy_ecs::prelude::{Children, Component, IntoScheduleConfigs, With};
@@ -15,14 +15,16 @@ use bevy_playdate::jobs::{JobHandle, JobStatusRef, Jobs, JobsScheduler, WorkResu
 use bevy_playdate::sprite::Sprite;
 use bevy_playdate::time::RunningTimer;
 use pd::graphics::color::{Color, LCDColorConst};
-use pd::graphics::fill_rect;
+use pd::graphics::{fill_rect, Graphics};
+use pd::graphics::api::Cache;
 use pd::graphics::text::draw_text;
+use pd::sprite::draw_sprites;
 use pd::sys::ffi::LCDColor;
-use bevy_playdate::debug::Debug;
+use bevy_playdate::debug::{in_debug, Debug};
 use bevy_playdate::view::Camera;
 use diagnostic::dbg;
 use crate::tiled::{JobCommandsExt, Map, MapLoader, SpriteLoader, SpriteTableLoader, TiledMap, TiledSet};
-use crate::tiled::spawn::MapHandle;
+use crate::tiled::spawn::{MapHandle, TileLayerCollision};
 // use crate::pdtiled::loader::TiledLoader;
 
 pub struct GamePlugin;
@@ -34,6 +36,7 @@ impl Plugin for GamePlugin {
         // app.add_systems(Update, draw_text_test);
         app.add_systems(Update, move_camera);
         app.add_systems(Last, (control_job, display_job).chain().after(Jobs::run_jobs_system));
+        app.add_systems(PostUpdate, debug_shape.after(draw_sprites).run_if(in_debug));
     }
 }
 
@@ -95,6 +98,24 @@ fn display_job(q_test: Query<&JobTestComponent>, jobs: Res<Jobs>, timer: Res<Run
     
 }
 
+fn debug_shape(
+    tile_layer_collision: Query<(&TileLayerCollision, &GlobalTransform)>,
+) {
+    let draw = Graphics::new_with(Cache::default());
+    for (layer, transform) in tile_layer_collision.iter() {
+        for (_, shape) in layer.0.shapes() {
+            let segment = shape.as_segment().unwrap();
+            let mut a = segment.a;
+            a.x += transform.x;
+            a.y += transform.y;
+            let mut b = segment.b;
+            b.x += transform.x;
+            b.y += transform.y;
+            draw.draw_line(a.x as i32, a.y as i32, b.x as i32, b.y as i32, 1, LCDColor::XOR);
+        }
+    }
+}
+
 fn control_job(
     q_test: Query<(Entity, &JobTestComponent)>,
     mut jobs: ResMut<Jobs>,
@@ -103,10 +124,11 @@ fn control_job(
     input: Res<ButtonInput<PlaydateButton>>,
     asset_cache: Res<ResAssetCache>,
     q_map_root: Query<(&Name, &Children), With<MapHandle>>,
-    q_name: Query<(&Name, Option<&Children>)>,
+    q_name: Query<((&Name, Option<&GlobalTransform>), Option<&Children>)>,
     q_transform: Query<&GlobalTransform>,
     q_sprite: Query<&Sprite>,
     debug: Res<Debug>,
+    camera: Query<&Transform, With<Camera>>,
 ) {
     if input.just_pressed(PlaydateButton::A) {
         
@@ -114,7 +136,7 @@ fn control_job(
             job: scheduler.add(100, TestJob(9500), test_job),
         })
             .insert((Name::new("Map"), Transform::from_xy(100.0, 20.0)))
-            .insert_loading_asset(MapLoader, -10, "assets/test-map.tmb");
+            .insert_loading_asset(MapLoader, -10, "assets/level-1.tmb");
     }
     
     if input.just_pressed(PlaydateButton::B) {
@@ -128,17 +150,22 @@ fn control_job(
         // }
     }
     
-    if input.just_pressed(PlaydateButton::Down) && debug.enabled {
-        for (name, children) in q_map_root {
-            println!("{}", name);
-            for &child in children {
-                print_recursive(0, child, &q_name);
-            }
-        }
-        asset_cache.0.try_read().unwrap().debug_loaded();
-        dbg!(q_transform.iter().len());
-        dbg!(q_sprite.iter().len());
-    }
+    
+    // if input.just_pressed(PlaydateButton::Down) && debug.enabled {
+    //     println!("here");
+    //     for (name, children) in q_map_root {
+    //         println!("{}", name);
+    //         for &child in children {
+    //             print_recursive(0, child, &q_name);
+    //         }
+    //     }
+    //     asset_cache.0.try_read().unwrap().debug_loaded();
+    //     dbg!(q_transform.iter().len());
+    //     dbg!(q_sprite.iter().len());
+    //     if let Ok(camera) = camera.single() {
+    //         dbg!(camera.0);
+    //     }
+    // }
     // let mut file = FileHandle::read_only("assets/test-map.tmx").unwrap();
     // let mut bytes = Vec::new();
     // file.read_to_end(&mut bytes).unwrap();
@@ -167,16 +194,20 @@ fn move_camera(
     y += input.pressed(PlaydateButton::Down) as i32;
     y -= input.pressed(PlaydateButton::Up) as i32;
     
-    camera.0 += Vec2::new(x as f32, y as f32) * time.delta_secs() * 100.0;
+    // avoid deref_mut
+    if x != 0 || y != 0 {
+        camera.0 += Vec2::new(x as f32, y as f32) * time.delta_secs() * 100.0;
+    }
 }
 
 fn print_recursive(
     level: usize,
     entity: Entity,
-    q_name: &Query<(&Name, Option<&Children>)>,
+    q_name: &Query<((&Name, Option<&GlobalTransform>), Option<&Children>)>,
 ) {
-    let (name, children) = q_name.get(entity).unwrap();
-    println!("{}↳ {}", String::from_utf8(vec![b' '; level * 2]).unwrap(), name);
+    let ((name, pos), children) = q_name.get(entity).unwrap();
+    let pos_str = pos.map(|s| s.0).map(|p| format!(" @ {:?}", p));
+    println!("{}↳ {}{}", String::from_utf8(vec![b' '; level * 2]).unwrap(), name, pos_str.unwrap_or_default());
     let Some(children) = children else { return; };
     for &child in children {
         print_recursive(level + 1, child, q_name);

@@ -7,9 +7,12 @@ use bevy_ecs::prelude::{Component, EntityCommands};
 use bevy_ecs::reflect::ReflectCommandExt;
 use bevy_playdate::transform::Transform;
 use hashbrown::HashMap;
-use tiledpd::tilemap::ArchivedObjectShape;
+use tiledpd::tilemap::{ArchivedLayerCollision, ArchivedObjectShape};
 use bevy_platform::sync::Arc;
 use bevy_reflect::Reflect;
+use itertools::Itertools;
+use parry2d::na::{Isometry2, Point2};
+use parry2d::shape::{Compound, Polyline, Segment, SharedShape};
 
 /// WARNING: This component is only used to keep a reference to the Arc<Map> data.
 ///
@@ -22,13 +25,37 @@ pub struct MapHandle(pub Arc<Map>);
 pub struct TileLayer {
     map: Arc<Map>,
     tiles: HashMap<[u32; 2], Entity>,
-    
 }
 
 impl TileLayer {
-    
     pub fn tile_at(&self, x: u32, y: u32) -> Option<Entity> {
         self.tiles.get(&[x, y]).copied()
+    }
+}
+
+#[derive(Component, Clone)]
+pub struct TileLayerCollision(pub Compound);
+
+impl TileLayerCollision {
+    pub fn from_layer_collision(layer: &ArchivedLayerCollision) -> Self {
+        Self::from(layer)
+    }
+}
+
+impl From<&ArchivedLayerCollision> for TileLayerCollision {
+    fn from(value: &ArchivedLayerCollision) -> Self {
+        Self(Compound::new(
+            value.lines.iter()
+                .flat_map(|line| {
+                    line.iter()
+                        .map(|p| Point2::new(p.0.to_native(), p.1.to_native()))
+                        .tuple_windows()
+                        .map(|(a, b)| Segment::new(a, b))
+                }
+                )
+                .map(|polyline| (Isometry2::identity(), SharedShape(Arc::new(polyline))))
+                .collect()
+        ))
     }
 }
 
@@ -88,6 +115,9 @@ pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
 
             match layer.data() {
                 LayerData::TileLayer(tile_layer) => {
+                    let layer_collision = TileLayerCollision::from(&tile_layer.layer_collision);
+                    layer_entity.insert(layer_collision);
+                    
                     if let Some(image) = tile_layer.image.as_ref() {
                         z_index += 1;
                         layer_entity.insert_loading_asset(SpriteLoader {

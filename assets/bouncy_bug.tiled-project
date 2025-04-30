@@ -158,6 +158,15 @@
             "drawFill": true,
             "id": 8,
             "members": [
+                {
+                    "name": "offset",
+                    "propertyType": "glam::Vec2",
+                    "type": "class",
+                    "value": {
+                        "x": 0,
+                        "y": 0
+                    }
+                }
             ],
             "name": "bevy_playdate::view::Camera",
             "type": "class",

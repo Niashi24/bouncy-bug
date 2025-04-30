@@ -1,10 +1,13 @@
-﻿use crate::ASSET_PATH;
+﻿use std::mem;
+use crate::ASSET_PATH;
 use image::{GenericImageView, RgbaImage};
 use std::ops::Deref;
 use std::path::PathBuf;
+use geo::{BooleanOps, Coord, LineString, MultiPolygon, Polygon};
+use itertools::Itertools;
 use tiled::{FiniteTileLayer, Layer, LayerTile, LayerTileData, LayerType, Object, PropertyValue, TileLayer, TilesetLocation};
 use tiledpd::properties::PropertyValue as PVPD;
-use tiledpd::tilemap::Tilemap;
+use tiledpd::tilemap::{LayerCollision, Tilemap};
 use tiledpd::tilemap::{ImageLayer, Layer as LayerPD, LayerData, ObjectData, ObjectLayer, ObjectShape, Tile};
 use tiledpd::tileset::{TileData, Tileset};
 
@@ -47,6 +50,7 @@ pub fn convert_layer(layer: Layer) -> LayerPD {
         id: layer.id(),
         x: data.offset_x,
         y: data.offset_y,
+        visible: data.visible,
         layer_data,
         properties: convert_properties(data.properties),
     }
@@ -81,6 +85,7 @@ pub fn convert_layer_data(main_layer: Layer) -> LayerData {
                             tiles.push(tile);
                         }
                     }
+                    let layer_collision = generate_layer_collision(&layer);
                     
                     let image = render_tile_layer(layer);
                     // image.save()
@@ -98,6 +103,7 @@ pub fn convert_layer_data(main_layer: Layer) -> LayerData {
                         width: layer.width(),
                         height: layer.height(),
                         tiles,
+                        layer_collision,
                         image: Some(name.to_string_lossy().to_string()),
                     })
                 }
@@ -113,6 +119,84 @@ pub fn convert_layer_data(main_layer: Layer) -> LayerData {
                 objects,
             })
         },
+    }
+}
+
+fn generate_layer_collision(layer: &FiniteTileLayer) -> LayerCollision {
+    let mut multi_polygon = MultiPolygon::new(Vec::new());
+    let tile_width = layer.map().tile_width as f32;
+    let tile_height = layer.map().tile_height as f32;
+    
+    for y in 0..layer.height() as i32 {
+        for x in 0..layer.width() as i32 {
+            if let Some(tile) = layer.get_tile(x, y) {
+                let tile_data = tile.get_tile().unwrap();
+                let object_data = tile_data.collision.as_ref()
+                    .map(|s| s.object_data())
+                    .unwrap_or_default();
+                if object_data.is_empty() { continue; }
+                // must have none or only 1
+                assert_eq!(object_data.len(), 1);
+                let mut points = match &object_data[0].shape {
+                    tiled::ObjectShape::Polygon { points } => {
+                        points.clone()
+                    }
+                    x => panic!("only polygon data supported: {:?}", x),
+                };
+                
+                // flip coords
+
+                if tile.flip_d {
+                    assert_eq!(tile_width, tile_height);
+                    points.iter_mut()
+                        .for_each(|(x, y)| mem::swap(x, y));
+                }
+                if tile.flip_h {
+                    points.iter_mut()
+                        .for_each(|(x, _)| *x = tile_width - *x);
+                }
+                if tile.flip_v {
+                    points.iter_mut()
+                        .for_each(|(_, y)| *y = tile_height - *y);
+                }
+                // offset by tile position
+                points.iter_mut()
+                    .for_each(|(x_p, y_p)| {
+                        *x_p += x as f32 * tile_width;
+                        *y_p += y as f32 * tile_height;
+                    });
+                
+                // merge with multi
+                let polygon = Polygon::new(LineString(
+                    points.into_iter().map(Coord::from).collect()
+                ), vec![]);
+                
+                multi_polygon = multi_polygon.union(&MultiPolygon(vec![polygon]));
+            }
+        }
+    }
+    
+    // dbg!(&multi_polygon);
+    
+    let lines = multi_polygon.into_iter()
+        .flat_map(|s| {
+            let (i, o) = s.into_inner();
+            [i].into_iter().chain(o)
+        })
+        .map(|line| line.0.iter().map(Coord::x_y).collect::<Vec<_>>())
+        .collect::<Vec<_>>();
+    // 
+    // println!("polygon:");
+    // for line in lines.iter() {
+    //     for (x, y) in line {
+    //         println!("{x},-{y}");
+    //     }
+    //     
+    //     println!();
+    // }
+    
+    LayerCollision {
+        lines,
     }
 }
 
@@ -155,17 +239,31 @@ pub fn render_layer_tile(tile: LayerTile) -> RgbaImage {
         panic!();
     };
 
+    if tile.flip_d {
+        image = flip_diagonal(image);
+    }
     if tile.flip_h {
         image = image::imageops::flip_horizontal(&image);
     }
     if tile.flip_v {
         image = image::imageops::flip_vertical(&image);
     }
-    if tile.flip_d {
-        image = flip_diagonal(image);
-    }
     
     image
+}
+
+fn print_image(image: &RgbaImage) {
+    for y in 0..image.height() {
+        for x in 0..image.width() {
+            let pixel = *image.get_pixel(x, y);
+            if pixel[3] == 0 {
+                print!(".");
+            } else {
+                print!("X");
+            }
+        }
+        println!();
+    }
 }
 
 pub fn flip_diagonal(mut image: RgbaImage) -> RgbaImage {

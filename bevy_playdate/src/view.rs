@@ -1,3 +1,4 @@
+use bevy_reflect::prelude::ReflectDefault;
 use crate::transform::{Transform, GlobalTransform};
 use crate::angle::PDAngle;
 use crate::sprite::{Sprite, SpriteRotation};
@@ -16,7 +17,11 @@ impl Plugin for ViewPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PostUpdate,
-            view_system
+            (
+                camera_offset,
+                sync_sprite_transform,
+                reset_removed_camera,
+            )
                 .after(crate::transform::TransformSystem::TransformPropagate)
                 .before(draw_sprites),
         )
@@ -25,32 +30,38 @@ impl Plugin for ViewPlugin {
 }
 
 /// Add this marker component to an entity to set it as the camera/center of the screen
-#[derive(Component, Copy, Clone, Eq, PartialEq, Reflect)]
+#[derive(Component, Copy, Clone, PartialEq, Reflect, Default)]
 #[require(Transform)]
-#[reflect(Component)]
-pub struct Camera;
+#[reflect(Component, Default, Clone)]
+pub struct Camera {
+    pub offset: Vec2,
+}
 
-// Either camera has moved
-// or single object moved
-pub fn view_system(
+pub fn camera_offset(camera: Option<Single<(&Camera, &GlobalTransform)>>) {
+    let Some(camera) = camera else { return };
+    let (camera, transform) = camera.into_inner();
+
+    let mut pos = transform.0;
+    pos += Vec2::new(-200.0, -120.0);
+    pos += camera.offset;
+
+    Graphics::Default().set_draw_offset(-pos.x as i32, -pos.y as i32);
+}
+
+pub fn reset_removed_camera(
     camera: Option<Single<Ref<GlobalTransform>, With<Camera>>>,
-    mut q_sprites: Query<(Ref<GlobalTransform>, &mut Sprite)>,
+    mut removed_components: RemovedComponents<Camera>,
 ) {
-    if let Some(camera_transform) = camera {
-        if camera_transform.is_changed() {
-            let mut pos = camera_transform.0;
-            pos += Vec2::new(-200.0, -120.0);
-            
-            Graphics::Default().set_draw_offset(-pos.x as i32, -pos.y as i32);
-        }
-    } else {
-        for (transform, mut spr) in q_sprites.iter_mut() {
-            if !transform.is_changed() && !spr.is_added() {
-                continue;
-            }
+    if removed_components.read().count() > 0 && camera.is_none() {
+        Graphics::Default().set_draw_offset(0, 0);
+    }
+}
 
-            spr.move_to(transform.x, transform.y);
-        }
+pub fn sync_sprite_transform(
+    mut q_sprite: Query<(&GlobalTransform, &mut Sprite), Or<(Changed<GlobalTransform>, Added<Sprite>)>>,
+) {
+    for (transform, mut spr) in q_sprite.iter_mut() {
+        spr.move_to(transform.x, transform.y);
     }
 }
 

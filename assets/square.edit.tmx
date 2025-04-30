@@ -4,6 +4,7 @@
   <export target="square.tmx" format="tmx"/>
  </editorsettings>
  <tileset firstgid="1" source="tiles.tsx"/>
+ <tileset firstgid="5" source="main-tileset.tsx"/>
  <layer id="1" name="Tile Layer 1" width="4" height="4">
   <data encoding="csv">
 3,3,0,0,

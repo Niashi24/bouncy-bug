@@ -25,12 +25,13 @@ bevy_playdate = { path = "../bevy_playdate" }
 bevy_reflect = { version = "0.16", default-features = false, features = ["glam", "smol_str", "smallvec"] }
 bevy_time = { version = "0.16", default-features = false }
 
-
 diagnostic = { path = "../diagnostic", features = ["pd"] }
 hashbrown = { version = "0.15.2", default-features = false, features = ["default-hasher"] }
+itertools = { version = "0.14.0", default-features = false }
 lz4_flex = { git = "https://github.com/PSeitz/lz4_flex.git", default-features = false }
 tiledpd = { path = "../tiledpd" }
 no_std_io2 = "0.9.0"
+parry2d = { git = "https://github.com/Niashi24/parry", branch = "bevy-support", default-features = false, features = ["required-features", "alloc"] }
 derive_more = { version = "2.0.1", default-features = false, features = ["full"] }
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 serde = { version = "1.0.217", default-features = false, features = ["derive", "serde_derive"] }
@@ -43,7 +44,7 @@ name = "Bouncy Bug"
 author = "Niashi"
 version = "0.1.0"
 bundle-id = "com.niashi.bouncybug"
-build-number = 242
+build-number = 305
 description = "TODO: Description for the Bouncy Bug game."
 
 #content-warning = "This game contains mild realistic, violence and bloodshed."
@@ -53,12 +54,14 @@ image-path = "img/system"
 launch-sound-path = "sfx/jump"
 
 [package.metadata.playdate.assets]
+"assets/level-1-layer-(1).png" = "../assets/export/level-1-layer-(1).png"
+"assets/level-1.tmb" = "../assets/export/level-1.tmb"
+"assets/main-tileset.tsb" = "../assets/export/main-tileset.tsb"
 "assets/square-layer-(1).png" = "../assets/export/square-layer-(1).png"
 "assets/square.tmb" = "../assets/export/square.tmb"
-"assets/test-map-layer-(1).png" = "../assets/export/test-map-layer-(1).png"
-"assets/test-map.tmb" = "../assets/export/test-map.tmb"
 "assets/tiles-table-16-16.png" = "../assets/export/tiles-table-16-16.png"
 "assets/tiles.tsb" = "../assets/export/tiles.tsb"
+"assets/tileset-table-24-24.png" = "../assets/export/tileset-table-24-24.png"
 "assets/folder/tiles-copy.png" = "../assets/export/folder/tiles-copy.png"
 
 #"img/system/" = "${PLAYDATE_SDK_PATH}/Examples/Game Template/Source/SystemAssets/*.png"

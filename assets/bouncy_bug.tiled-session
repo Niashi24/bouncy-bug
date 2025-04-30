@@ -9,12 +9,41 @@
     ],
     "file.lastUsedOpenFilter": "All Files (*)",
     "fileStates": {
-        "square.edit.tmx": {
-            "scale": 7.0803,
+        "kenny-platformer-1bit.tsx": {
+            "dynamicWrapping": false,
+            "scaleInDock": 1,
+            "scaleInEditor": 15.52
+        },
+        "level-1.edit.tmx": {
+            "expandedObjectLayers": [
+                2
+            ],
+            "scale": 1.0652,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 36.72160784147564,
-                "y": 23.586571190486282
+                "x": 420.57829515583927,
+                "y": 122.04280886218552
+            }
+        },
+        "level-1.tmx": {
+            "scale": 0.98,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 481.6326530612246,
+                "y": 102.0408163265306
+            }
+        },
+        "main-tileset.tsx": {
+            "dynamicWrapping": false,
+            "scaleInDock": 1,
+            "scaleInEditor": 1.6856
+        },
+        "square.edit.tmx": {
+            "scale": 2.0443,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": -156.53279851293843,
+                "y": 69.95059433546936
             }
         },
         "square.tmx": {
@@ -26,11 +55,14 @@
             }
         },
         "test-map.edit.tmx": {
-            "scale": 1.452,
+            "expandedObjectLayers": [
+                2
+            ],
+            "scale": 1.7434,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 211.43250688705237,
-                "y": 8.264462809917376
+                "x": 208.21383503498907,
+                "y": 24.664448778249408
             }
         },
         "test-map.export.tmx": {
@@ -58,19 +90,26 @@
         "tiles.tsx": {
             "dynamicWrapping": true,
             "scaleInDock": 1,
-            "scaleInEditor": 15.5235
+            "scaleInEditor": 15.52
         }
     },
+    "frame.defaultDuration": 100,
     "last.exportedFilePath": "C:/Users/niasp/Documents/Programming/bouncy-bug/assets",
+    "last.externalTilesetPath": "C:/Users/niasp/Documents/Programming/bouncy-bug/assets",
     "last.imagePath": "C:/Users/niasp/Documents/Programming/bouncy-bug/assets",
     "last.objectTypesPath": "C:/Users/niasp/Documents/PlaydateSDK/Disk/Data/com.niashi.bouncybug/type-export.json",
+    "last.worldFilePath": "C:/Users/niasp/Documents/Programming/bouncy-bug/assets",
     "lastUsedTilesetExportFilter": "JSON tileset files (*.tsj *.json)",
-    "map.height": 4,
+    "loadedWorlds": [
+        "C:/Users/niasp/Documents/Programming/bouncy-bug/assets/test-world.world"
+    ],
+    "map.height": 15,
     "map.lastUsedExportFilter": "Tiled map files (*.tmx *.xml)",
     "map.lastUsedFormat": "tmx",
-    "map.tileHeight": 16,
-    "map.tileWidth": 16,
-    "map.width": 4,
+    "map.tileHeight": 24,
+    "map.tileWidth": 24,
+    "map.width": 16,
+    "mapScene.enableWorlds": true,
     "openFiles": [
         "test-map.tmx",
         "tiles.tsx",
@@ -79,15 +118,19 @@
     "project": "bouncy_bug.tiled-project",
     "property.type": "bevy_playdate::view::Camera",
     "recentFiles": [
-        "test-map.tmx",
+        "tiles.tsx",
+        "main-tileset.tsx",
+        "square.edit.tmx",
         "square.tmx",
         "test-map.edit.tmx",
-        "test-map.export.tmx",
-        "tiles.tsx"
+        "kenny-platformer-1bit.tsx",
+        "test-map.tmx",
+        "test-map.export.tmx"
     ],
+    "tileset.lastUsedFilter": "Tiled tileset files (*.tsx *.xml)",
     "tileset.lastUsedFormat": "tsx",
     "tileset.tileSize": {
-        "height": 16,
-        "width": 16
+        "height": 24,
+        "width": 24
     }
 }

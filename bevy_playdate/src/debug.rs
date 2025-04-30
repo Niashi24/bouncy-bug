@@ -26,9 +26,10 @@ impl Plugin for DebugPlugin {
                 PostUpdate,
                 (
                     toggle_debug_system,
-                    (draw_fps_top_left, debug_sprite)
-                        .after(draw_sprites)
-                        .run_if(in_debug),
+                    draw_fps_top_left.after(draw_sprites),
+                    // (debug_sprite)
+                    //     .after(draw_sprites)
+                    //     .run_if(in_debug),
                 ).chain(),
             );
         app.add_plugins(FpsLinesPlugin);

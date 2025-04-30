@@ -44,6 +44,7 @@ pub struct Layer {
     pub id: u32,
     pub x: f32,
     pub y: f32,
+    pub visible: bool,
     pub layer_data: LayerData,
     pub properties: Properties,
 }
@@ -182,7 +183,6 @@ impl AddDependenciesMut for ImageLayer {
 }
 
 #[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
-#[repr(C)]
 #[rkyv(derive(Debug))]
 pub struct TileLayer {
     pub width: u32,
@@ -192,6 +192,7 @@ pub struct TileLayer {
     /// If `Some`, it will use the image as a single sprite on the Layer entity.
     /// If `None`, it will create a sprite on each tile entity. 
     pub image: Option<String>,
+    pub layer_collision: LayerCollision,
 }
 
 impl AddDependencies for ArchivedTileLayer {
@@ -208,6 +209,13 @@ impl AddDependenciesMut for TileLayer {
             dependencies.push(image);
         }
     }
+}
+
+#[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
+#[rkyv(derive(Debug))]
+pub struct LayerCollision {
+    // list of polyline points
+    pub lines: Vec<Vec<(f32, f32)>>,
 }
 
 // TODO: Pack this into a single integer?

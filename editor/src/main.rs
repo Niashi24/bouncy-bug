@@ -38,6 +38,8 @@ fn main() -> anyhow::Result<()> {
         println!("processing assets");
         let mut asset_table = Table::new();
         
+        let _ = fs::remove_dir_all("assets\\export");
+        
         let _ = run_assets();
         
         // get all files in export folder (recursively)
