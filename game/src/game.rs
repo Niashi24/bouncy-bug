@@ -9,7 +9,7 @@ use bevy_input::ButtonInput;
 use bevy_math::{Dir2, Rot2, Vec2};
 use bevy_time::Time;
 use parry2d::na::{Point2, Vector2};
-use parry2d::query::Ray;
+use parry2d::query::{Ray, ShapeCastOptions};
 use bevy_playdate::transform::{GlobalTransform, Transform};
 use bevy_playdate::asset::ResAssetCache;
 use bevy_playdate::input::{CrankInput, PlaydateButton};
@@ -17,7 +17,7 @@ use bevy_playdate::jobs::{JobHandle, JobStatusRef, Jobs, JobsScheduler, WorkResu
 use bevy_playdate::sprite::Sprite;
 use bevy_playdate::time::RunningTimer;
 use pd::graphics::color::{Color, LCDColorConst};
-use pd::graphics::{fill_rect, Graphics};
+use pd::graphics::{fill_rect, Graphics, LineCapStyle};
 use pd::graphics::api::Cache;
 use pd::graphics::text::draw_text;
 use pd::sprite::draw_sprites;
@@ -26,7 +26,8 @@ use bevy_playdate::debug::{in_debug, Debug};
 use bevy_playdate::view::Camera;
 use diagnostic::dbg;
 use crate::tiled::{JobCommandsExt, Map, MapLoader, SpriteLoader, SpriteTableLoader, TiledMap, TiledSet};
-use crate::tiled::spawn::{MapHandle, TileLayerCollision};
+use crate::tiled::spawn::{MapHandle};
+use crate::tiled::collision::TileLayerCollision;
 // use crate::pdtiled::loader::TiledLoader;
 
 pub struct GamePlugin;
@@ -131,35 +132,50 @@ fn test_ray(
     // if input.docked { return; }
 
     let graphics = Graphics::new_with(Cache::default());
+    graphics.set_line_cap_style(LineCapStyle::kLineCapStyleRound);
     let rot = Rot2::from(input.angle.to_radians());
+    let rot = Vec2::new(rot.cos, rot.sin);
     
     let distance = 400.0;
     
     for camera in camera {
         let camera = camera.0;
-        let ray = Ray::new(Point2::new(camera.x, camera.y), Vector2::from([rot.cos, rot.sin]));
-        let hit = TileLayerCollision::raycast_many(
+        
+        if q_layer_collisions.iter()
+            .any(|(layer, transform)|
+                layer.overlap_circle(transform, camera, 12.0)
+            ) {
+            graphics.fill_ellipse(camera.x as i32 - 12, camera.y as i32 - 12, 24, 24, 0.0, 0.0, LCDColor::XOR);
+        }
+        
+        // let ray = Ray::new(Point2::new(camera.x, camera.y), Vector2::from([rot.cos, rot.sin]));
+        let hit = TileLayerCollision::circle_cast_many(
             q_layer_collisions.iter(),
-            &ray,
-            distance,
+            camera,
+            12.0,
+            rot,
+            ShapeCastOptions {
+                max_time_of_impact: distance,
+                ..ShapeCastOptions::default()
+            },
         );
         
         if let Some(hit) = hit {
-            let point = ray.point_at(hit.time_of_impact);
+            let point = camera + rot * hit.time_of_impact;
             graphics.draw_line(
                 camera.x as i32,
                 camera.y as i32,
                 point.x as i32,
                 point.y as i32,
-                1,
-                LCDColor::XOR,
+                24,
+                LCDColor::BLACK,
             );
             
             // Dir2::from_xy_unchecked(rot.cos, rot.sin).reflect_an;
             let remaining = distance - hit.time_of_impact;
             let new_dir = reflect_ray(
-                Vec2::new(rot.cos, rot.sin),
-                Vec2::new(hit.normal.x, hit.normal.y),
+                rot,
+                Vec2::new(hit.normal1.x, hit.normal1.y),
             );
             
             let reflect = Vec2::new(point.x, point.y) + new_dir * remaining;
@@ -169,19 +185,19 @@ fn test_ray(
                 point.y as i32,
                 reflect.x as i32,
                 reflect.y as i32,
-                1,
-                LCDColor::XOR,
+                24,
+                LCDColor::BLACK,
             );
         } else {
-            let end = camera + rot * Vec2::new(distance, 0.0);
+            let end = camera + rot * distance;
             
             graphics.draw_line(
                 camera.x as i32,
                 camera.y as i32,
                 end.x as i32,
                 end.y as i32,
-                1,
-                LCDColor::XOR,
+                24,
+                LCDColor::BLACK,
             );
         }
     }

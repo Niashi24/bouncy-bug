@@ -34,6 +34,7 @@ mod export;
 mod types_json;
 mod load;
 pub mod job;
+pub mod collision;
 
 pub struct TiledPlugin;
 
