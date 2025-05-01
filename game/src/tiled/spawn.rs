@@ -5,13 +5,15 @@ use bevy_ecs::entity::Entity;
 use bevy_ecs::name::Name;
 use bevy_ecs::prelude::{Component, EntityCommands};
 use bevy_ecs::reflect::ReflectCommandExt;
-use bevy_playdate::transform::Transform;
+use bevy_math::{Rot2, Vec2};
+use bevy_playdate::transform::{GlobalTransform, Transform};
 use hashbrown::HashMap;
 use tiledpd::tilemap::{ArchivedLayerCollision, ArchivedObjectShape};
 use bevy_platform::sync::Arc;
 use bevy_reflect::Reflect;
 use itertools::Itertools;
-use parry2d::na::{Isometry2, Point2};
+use parry2d::na::{Isometry2, Point2, Vector2};
+use parry2d::query::{Ray, RayCast, RayIntersection};
 use parry2d::shape::{Compound, Polyline, Segment, SharedShape};
 
 /// WARNING: This component is only used to keep a reference to the Arc<Map> data.
@@ -39,6 +41,48 @@ pub struct TileLayerCollision(pub Compound);
 impl TileLayerCollision {
     pub fn from_layer_collision(layer: &ArchivedLayerCollision) -> Self {
         Self::from(layer)
+    }
+    
+    pub fn raycast(
+        &self,
+        transform: &GlobalTransform,
+        ray: &Ray,
+        max_time_of_impact: f32,
+    ) -> Option<RayIntersection> {
+        // let ray = Ray::new(
+        //     Point2::new(pos.x - transform.x, pos.y - transform.y),
+        //     Vector2::from([dir.cos, dir.sin])
+        // );
+
+        self.0.cast_ray_and_get_normal(
+            &Isometry2::translation(transform.x, transform.y),
+            &ray,
+            max_time_of_impact,
+            true
+        )
+    }
+    
+    pub fn raycast_many<'a>(
+        layers: impl IntoIterator<Item=(&'a Self, &'a GlobalTransform)>,
+        ray: &Ray,
+        max_time_of_impact: f32,
+    ) -> Option<RayIntersection> {
+        let mut closest_ray: Option<RayIntersection> = None;
+        for (layer, transform) in layers {
+            let hit = layer.raycast(transform, ray, max_time_of_impact);
+            
+            if let Some(hit) = hit {
+                if let Some(prev) = &mut closest_ray {
+                    if hit.time_of_impact < prev.time_of_impact {
+                        *prev = hit;
+                    }
+                } else {
+                    closest_ray = Some(hit);
+                }
+            }
+        }
+        
+        closest_ray
     }
 }
 
@@ -181,9 +225,8 @@ pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
                             z_index += 1;
                             object.insert_loading_asset(SpriteTableLoader {
                                 sprite_loader: SpriteLoader {
-                                    // center is on bottom left corner for whatever reason
-                                    center: [0.0, 1.0],
                                     z_index,
+                                    ..SpriteLoader::default()
                                 },
                                 index: tile.tile_id as usize,
                             }, 10, path);

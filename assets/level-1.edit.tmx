@@ -24,14 +24,14 @@
 </data>
  </layer>
  <objectgroup id="2" name="Object Layer 1">
-  <object id="1" gid="3" x="306.367" y="139.551" width="24" height="24">
+  <object id="1" gid="5" x="306.367" y="139.551" width="24" height="24">
    <properties>
     <property name="camera" type="class" propertytype="bevy_playdate::view::Camera">
      <properties>
       <property name="offset" type="class" propertytype="glam::Vec2">
        <properties>
-        <property name="x" type="float" value="12"/>
-        <property name="y" type="float" value="-12"/>
+        <property name="x" type="float" value="0"/>
+        <property name="y" type="float" value="0"/>
        </properties>
       </property>
      </properties>

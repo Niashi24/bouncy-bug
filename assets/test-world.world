@@ -1,4 +1,20 @@
 {
+    "maps": [
+        {
+            "fileName": "test-map.edit.tmx",
+            "height": 240,
+            "width": 400,
+            "x": 0,
+            "y": 0
+        },
+        {
+            "fileName": "square.edit.tmx",
+            "height": 64,
+            "width": 64,
+            "x": 400,
+            "y": 48
+        }
+    ],
     "onlyShowAdjacentMaps": false,
     "type": "world"
 }

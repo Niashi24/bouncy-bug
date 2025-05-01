@@ -6,11 +6,13 @@ use bevy_ecs::name::Name;
 use bevy_ecs::prelude::{Children, Component, IntoScheduleConfigs, With};
 use bevy_ecs::system::{Commands, In, Query, Res, ResMut, Single};
 use bevy_input::ButtonInput;
-use bevy_math::Vec2;
+use bevy_math::{Dir2, Rot2, Vec2};
 use bevy_time::Time;
+use parry2d::na::{Point2, Vector2};
+use parry2d::query::Ray;
 use bevy_playdate::transform::{GlobalTransform, Transform};
 use bevy_playdate::asset::ResAssetCache;
-use bevy_playdate::input::PlaydateButton;
+use bevy_playdate::input::{CrankInput, PlaydateButton};
 use bevy_playdate::jobs::{JobHandle, JobStatusRef, Jobs, JobsScheduler, WorkResult};
 use bevy_playdate::sprite::Sprite;
 use bevy_playdate::time::RunningTimer;
@@ -36,7 +38,7 @@ impl Plugin for GamePlugin {
         // app.add_systems(Update, draw_text_test);
         app.add_systems(Update, move_camera);
         app.add_systems(Last, (control_job, display_job).chain().after(Jobs::run_jobs_system));
-        app.add_systems(PostUpdate, debug_shape.after(draw_sprites).run_if(in_debug));
+        app.add_systems(PostUpdate, (debug_shape.run_if(in_debug), test_ray).after(draw_sprites));
     }
 }
 
@@ -111,7 +113,76 @@ fn debug_shape(
             let mut b = segment.b;
             b.x += transform.x;
             b.y += transform.y;
-            draw.draw_line(a.x as i32, a.y as i32, b.x as i32, b.y as i32, 1, LCDColor::XOR);
+            draw.draw_line(a.x as i32, a.y as i32, b.x as i32, b.y as i32, 2, LCDColor::XOR);
+        }
+    }
+}
+
+fn reflect_ray(dir: Vec2, normal: Vec2) -> Vec2 {
+    let dot = Vec2::dot(dir, normal);
+    dir - 2.0 * dot * normal
+}
+
+fn test_ray(
+    q_layer_collisions: Query<(&TileLayerCollision, &GlobalTransform)>,
+    camera: Query<&GlobalTransform, With<Camera>>,
+    input: Res<CrankInput>,
+) {
+    // if input.docked { return; }
+
+    let graphics = Graphics::new_with(Cache::default());
+    let rot = Rot2::from(input.angle.to_radians());
+    
+    let distance = 400.0;
+    
+    for camera in camera {
+        let camera = camera.0;
+        let ray = Ray::new(Point2::new(camera.x, camera.y), Vector2::from([rot.cos, rot.sin]));
+        let hit = TileLayerCollision::raycast_many(
+            q_layer_collisions.iter(),
+            &ray,
+            distance,
+        );
+        
+        if let Some(hit) = hit {
+            let point = ray.point_at(hit.time_of_impact);
+            graphics.draw_line(
+                camera.x as i32,
+                camera.y as i32,
+                point.x as i32,
+                point.y as i32,
+                1,
+                LCDColor::XOR,
+            );
+            
+            // Dir2::from_xy_unchecked(rot.cos, rot.sin).reflect_an;
+            let remaining = distance - hit.time_of_impact;
+            let new_dir = reflect_ray(
+                Vec2::new(rot.cos, rot.sin),
+                Vec2::new(hit.normal.x, hit.normal.y),
+            );
+            
+            let reflect = Vec2::new(point.x, point.y) + new_dir * remaining;
+            
+            graphics.draw_line(
+                point.x as i32,
+                point.y as i32,
+                reflect.x as i32,
+                reflect.y as i32,
+                1,
+                LCDColor::XOR,
+            );
+        } else {
+            let end = camera + rot * Vec2::new(distance, 0.0);
+            
+            graphics.draw_line(
+                camera.x as i32,
+                camera.y as i32,
+                end.x as i32,
+                end.y as i32,
+                1,
+                LCDColor::XOR,
+            );
         }
     }
 }

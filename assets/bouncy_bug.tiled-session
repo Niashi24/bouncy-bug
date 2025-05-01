@@ -3,7 +3,7 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "tiles.tsx",
+    "activeFile": "level-1.edit.tmx",
     "expandedProjectPaths": [
         "."
     ],
@@ -18,11 +18,11 @@
             "expandedObjectLayers": [
                 2
             ],
-            "scale": 1.0652,
+            "scale": 1.1821,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 420.57829515583927,
-                "y": 122.04280886218552
+                "x": 395.0596396243973,
+                "y": 110.81972760341765
             }
         },
         "level-1.tmx": {
@@ -111,15 +111,15 @@
     "map.width": 16,
     "mapScene.enableWorlds": true,
     "openFiles": [
-        "test-map.tmx",
-        "tiles.tsx",
-        "test-map.export.tmx"
+        "level-1.edit.tmx",
+        "main-tileset.tsx"
     ],
     "project": "bouncy_bug.tiled-project",
     "property.type": "bevy_playdate::view::Camera",
     "recentFiles": [
-        "tiles.tsx",
         "main-tileset.tsx",
+        "level-1.edit.tmx",
+        "tiles.tsx",
         "square.edit.tmx",
         "square.tmx",
         "test-map.edit.tmx",

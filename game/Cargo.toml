@@ -33,6 +33,7 @@ tiledpd = { path = "../tiledpd" }
 no_std_io2 = "0.9.0"
 parry2d = { git = "https://github.com/Niashi24/parry", branch = "bevy-support", default-features = false, features = ["required-features", "alloc"] }
 derive_more = { version = "2.0.1", default-features = false, features = ["full"] }
+# Used only for exporting types (not needed for final builds?)
 serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
 serde = { version = "1.0.217", default-features = false, features = ["derive", "serde_derive"] }
 
@@ -44,7 +45,7 @@ name = "Bouncy Bug"
 author = "Niashi"
 version = "0.1.0"
 bundle-id = "com.niashi.bouncybug"
-build-number = 305
+build-number = 322
 description = "TODO: Description for the Bouncy Bug game."
 
 #content-warning = "This game contains mild realistic, violence and bloodshed."
