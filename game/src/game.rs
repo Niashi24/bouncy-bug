@@ -27,7 +27,7 @@ use bevy_playdate::view::Camera;
 use diagnostic::dbg;
 use crate::tiled::{JobCommandsExt, Map, MapLoader, SpriteLoader, SpriteTableLoader, TiledMap, TiledSet};
 use crate::tiled::spawn::{MapHandle};
-use crate::tiled::collision::{Collision, TileLayerCollision};
+use crate::tiled::collision::{reflect_ray, Collision, TileLayerCollision};
 // use crate::pdtiled::loader::TiledLoader;
 
 pub struct GamePlugin;
@@ -119,11 +119,6 @@ fn debug_shape(
     }
 }
 
-fn reflect_ray(dir: Vec2, normal: Vec2) -> Vec2 {
-    let dot = Vec2::dot(dir, normal);
-    dir - 2.0 * dot * normal
-}
-
 fn test_ray(
     collision: Collision,
     camera: Query<&GlobalTransform, With<Camera>>,
@@ -141,10 +136,6 @@ fn test_ray(
     for camera in camera {
         let camera = camera.0;
         
-        if collision.overlap_circle(camera, 12.0).is_some() {
-            graphics.fill_ellipse(camera.x as i32 - 12, camera.y as i32 - 12, 24, 24, 0.0, 0.0, LCDColor::XOR);
-        }
-        
         // let ray = Ray::new(Point2::new(camera.x, camera.y), Vector2::from([rot.cos, rot.sin]));
         let hit = collision.circle_cast(
             camera,
@@ -156,45 +147,40 @@ fn test_ray(
             },
         );
         
-        if let Some((_e, hit)) = hit {
-            let point = camera + rot * hit.time_of_impact;
+        let mut rays = collision.circle_cast_repeat(
+            camera,
+            rot,
+            12.0,
+            ShapeCastOptions {
+                max_time_of_impact: distance,
+                ..ShapeCastOptions::default()
+            }
+        );
+        
+        let mut last_point = camera;
+        while let Some(hit) = rays.next() {
             graphics.draw_line(
-                camera.x as i32,
-                camera.y as i32,
-                point.x as i32,
-                point.y as i32,
+                last_point.x as i32,
+                last_point.y as i32,
+                rays.pos.x as i32,
+                rays.pos.y as i32,
                 24,
                 LCDColor::BLACK,
             );
             
-            // Dir2::from_xy_unchecked(rot.cos, rot.sin).reflect_an;
-            let remaining = distance - hit.time_of_impact;
-            let new_dir = reflect_ray(
-                rot,
-                Vec2::new(hit.normal1.x, hit.normal1.y),
-            );
-            
-            let reflect = Vec2::new(point.x, point.y) + new_dir * remaining;
-            
-            graphics.draw_line(
-                point.x as i32,
-                point.y as i32,
-                reflect.x as i32,
-                reflect.y as i32,
-                24,
-                LCDColor::BLACK,
-            );
-        } else {
-            let end = camera + rot * distance;
-            
-            graphics.draw_line(
-                camera.x as i32,
-                camera.y as i32,
-                end.x as i32,
-                end.y as i32,
-                24,
-                LCDColor::BLACK,
-            );
+            last_point = rays.pos;
+        }
+        graphics.draw_line(
+            last_point.x as i32,
+            last_point.y as i32,
+            rays.pos.x as i32,
+            rays.pos.y as i32,
+            24,
+            LCDColor::BLACK,
+        );
+
+        if collision.overlap_circle(camera, 12.0).is_some() {
+            graphics.fill_ellipse(camera.x as i32 - 12, camera.y as i32 - 12, 24, 24, 0.0, 0.0, LCDColor::XOR);
         }
     }
 }

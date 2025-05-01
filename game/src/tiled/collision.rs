@@ -95,7 +95,7 @@ pub struct Collision<'w, 's> {
     layers: Query<'w, 's, (Entity, &'static TileLayerCollision, &'static GlobalTransform)>
 }
 
-impl Collision<'_, '_> {
+impl<'w, 's> Collision<'w, 's> {
     pub fn circle_cast(
         &self,
         pos: Vec2,
@@ -131,7 +131,7 @@ impl Collision<'_, '_> {
             .map(|(e, _, _)| e)
     }
 
-    pub fn raycast_many<'a>(
+    pub fn raycast<'a>(
         &self,
         ray: &Ray,
         max_time_of_impact: f32,
@@ -154,4 +154,65 @@ impl Collision<'_, '_> {
 
         closest_ray
     }
+    
+    pub fn circle_cast_repeat<'a>(&'a self, pos: Vec2, dir: Vec2, r: f32, options: ShapeCastOptions) -> CastRepeat<'a, 'w, 's> {
+        CastRepeat {
+            collision: self,
+            pos,
+            dir,
+            r,
+            options,
+            iterations_remaining: 8,
+        }
+    }
 }
+
+pub fn reflect_ray(dir: Vec2, normal: Vec2) -> Vec2 {
+    let dot = Vec2::dot(dir, normal);
+    dir - 2.0 * dot * normal
+}
+
+pub struct CastRepeat<'a, 'w, 's> {
+    collision: &'a Collision<'w, 's>,
+    pub pos: Vec2,
+    pub dir: Vec2,
+    pub r: f32,
+    pub options: ShapeCastOptions,
+    pub iterations_remaining: u32,
+}
+
+impl<'a, 'w, 's> Iterator for CastRepeat<'a, 'w, 's> {
+    type Item = ShapeCastHit;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.iterations_remaining == 0 {
+            println!("max iterations reached");
+            return None;
+        }
+        
+        let Some((_, next)) = self.collision.circle_cast(self.pos, self.r, self.dir, self.options) else {
+            self.pos += self.dir * self.options.max_time_of_impact;
+            self.options.max_time_of_impact = 0.0;
+            
+            return None;
+        };
+        if next.time_of_impact <= 0.001 {
+            println!("was inside: {}", next.time_of_impact);
+            return None;
+        }
+        let normal = Vec2::new(next.normal2.x, next.normal2.y);
+        
+        self.pos = self.pos + self.dir * next.time_of_impact;
+        // need to move a bit away from the wall so we don't run into it on next iteration
+        // todo: this correction should back in the direction 
+        self.pos += normal * 1.0;
+        
+        self.dir = reflect_ray(self.dir, normal);
+        self.options.max_time_of_impact -= next.time_of_impact;
+        
+        self.iterations_remaining = self.iterations_remaining.saturating_sub(1);
+        
+        Some(next)
+    }
+}
+

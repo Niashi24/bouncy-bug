@@ -186,14 +186,14 @@ fn generate_layer_collision(layer: &FiniteTileLayer) -> LayerCollision {
         .map(|line| line.0.iter().map(Coord::x_y).collect::<Vec<_>>())
         .collect::<Vec<_>>();
     // 
-    // println!("polygon:");
-    // for line in lines.iter() {
-    //     for (x, y) in line {
-    //         println!("{x},-{y}");
-    //     }
-    //     
-    //     println!();
-    // }
+    println!("polygon:");
+    for line in lines.iter() {
+        for (x, y) in line {
+            println!("{x},-{y}");
+        }
+        
+        println!();
+    }
     
     LayerCollision {
         lines,

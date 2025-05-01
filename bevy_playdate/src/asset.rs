@@ -124,7 +124,7 @@ impl BitmapTableAsset {
 
         table.info::<api::Default>(Some(&mut len), None);
         
-        dbg!(len);
+        // dbg!(len);
 
         let mut bitmaps = Vec::with_capacity(len as usize);
         for i in 0..len {
