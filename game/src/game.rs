@@ -27,7 +27,7 @@ use bevy_playdate::view::Camera;
 use diagnostic::dbg;
 use crate::tiled::{JobCommandsExt, Map, MapLoader, SpriteLoader, SpriteTableLoader, TiledMap, TiledSet};
 use crate::tiled::spawn::{MapHandle};
-use crate::tiled::collision::TileLayerCollision;
+use crate::tiled::collision::{Collision, TileLayerCollision};
 // use crate::pdtiled::loader::TiledLoader;
 
 pub struct GamePlugin;
@@ -125,7 +125,7 @@ fn reflect_ray(dir: Vec2, normal: Vec2) -> Vec2 {
 }
 
 fn test_ray(
-    q_layer_collisions: Query<(&TileLayerCollision, &GlobalTransform)>,
+    collision: Collision,
     camera: Query<&GlobalTransform, With<Camera>>,
     input: Res<CrankInput>,
 ) {
@@ -141,16 +141,12 @@ fn test_ray(
     for camera in camera {
         let camera = camera.0;
         
-        if q_layer_collisions.iter()
-            .any(|(layer, transform)|
-                layer.overlap_circle(transform, camera, 12.0)
-            ) {
+        if collision.overlap_circle(camera, 12.0).is_some() {
             graphics.fill_ellipse(camera.x as i32 - 12, camera.y as i32 - 12, 24, 24, 0.0, 0.0, LCDColor::XOR);
         }
         
         // let ray = Ray::new(Point2::new(camera.x, camera.y), Vector2::from([rot.cos, rot.sin]));
-        let hit = TileLayerCollision::circle_cast_many(
-            q_layer_collisions.iter(),
+        let hit = collision.circle_cast(
             camera,
             12.0,
             rot,
@@ -160,7 +156,7 @@ fn test_ray(
             },
         );
         
-        if let Some(hit) = hit {
+        if let Some((_e, hit)) = hit {
             let point = camera + rot * hit.time_of_impact;
             graphics.draw_line(
                 camera.x as i32,

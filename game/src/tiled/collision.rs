@@ -1,5 +1,7 @@
 ﻿use alloc::sync::Arc;
 use bevy_ecs::component::Component;
+use bevy_ecs::entity::Entity;
+use bevy_ecs::system::{Query, SystemParam};
 use bevy_math::Vec2;
 use itertools::Itertools;
 use parry2d::na::{Isometry2, Point2, Vector2};
@@ -33,29 +35,6 @@ impl TileLayerCollision {
             max_time_of_impact,
             true
         )
-    }
-
-    pub fn raycast_many<'a>(
-        layers: impl IntoIterator<Item=(&'a Self, &'a GlobalTransform)>,
-        ray: &Ray,
-        max_time_of_impact: f32,
-    ) -> Option<RayIntersection> {
-        let mut closest_ray: Option<RayIntersection> = None;
-        for (layer, transform) in layers {
-            let hit = layer.raycast(transform, ray, max_time_of_impact);
-
-            if let Some(hit) = hit {
-                if let Some(prev) = &mut closest_ray {
-                    if hit.time_of_impact < prev.time_of_impact {
-                        *prev = hit;
-                    }
-                } else {
-                    closest_ray = Some(hit);
-                }
-            }
-        }
-
-        closest_ray
     }
 
     pub fn overlap_circle(
@@ -92,30 +71,6 @@ impl TileLayerCollision {
             options,
         ).unwrap()
     }
-
-    pub fn circle_cast_many<'a>(
-        layers: impl IntoIterator<Item=(&'a Self, &'a GlobalTransform)>,
-        pos: Vec2,
-        r: f32,
-        vel: Vec2,
-        options: ShapeCastOptions,
-    ) -> Option<ShapeCastHit> {
-        let mut out: Option<ShapeCastHit> = None;
-
-        for (layer, transform) in layers {
-            if let Some(hit) = layer.circle_cast(transform, pos, r, vel, options) {
-                if let Some(prev) = &mut out {
-                    if hit.time_of_impact < prev.time_of_impact {
-                        *prev = hit;
-                    }
-                } else {
-                    out = Some(hit);
-                }
-            }
-        }
-
-        out
-    }
 }
 
 impl From<&ArchivedLayerCollision> for TileLayerCollision {
@@ -132,5 +87,71 @@ impl From<&ArchivedLayerCollision> for TileLayerCollision {
                 .map(|polyline| (Isometry2::identity(), SharedShape(Arc::new(polyline))))
                 .collect()
         ))
+    }
+}
+
+#[derive(SystemParam)]
+pub struct Collision<'w, 's> {
+    layers: Query<'w, 's, (Entity, &'static TileLayerCollision, &'static GlobalTransform)>
+}
+
+impl Collision<'_, '_> {
+    pub fn circle_cast(
+        &self,
+        pos: Vec2,
+        r: f32,
+        vel: Vec2,
+        options: ShapeCastOptions,
+    ) -> Option<(Entity, ShapeCastHit)> {
+        let mut out: Option<(Entity, ShapeCastHit)> = None;
+
+        for (entity, layer, transform) in self.layers {
+            if let Some(hit) = layer.circle_cast(transform, pos, r, vel, options) {
+                if let Some((e, prev)) = &mut out {
+                    if hit.time_of_impact < prev.time_of_impact {
+                        *prev = hit;
+                        *e = entity;
+                    }
+                } else {
+                    out = Some((entity, hit));
+                }
+            }
+        }
+
+        out
+    }
+    
+    pub fn overlap_circle(
+        &self,
+        pos: Vec2,
+        r: f32,
+    ) -> Option<Entity> {
+        self.layers.iter()
+            .find(|(e, layer, transform)| layer.overlap_circle(transform, pos, r))
+            .map(|(e, _, _)| e)
+    }
+
+    pub fn raycast_many<'a>(
+        &self,
+        ray: &Ray,
+        max_time_of_impact: f32,
+    ) -> Option<(Entity, RayIntersection)> {
+        let mut closest_ray: Option<(Entity, RayIntersection)> = None;
+        for (entity, layer, transform) in self.layers.iter() {
+            let hit = layer.raycast(transform, ray, max_time_of_impact);
+
+            if let Some(hit) = hit {
+                if let Some((e, prev)) = &mut closest_ray {
+                    if hit.time_of_impact < prev.time_of_impact {
+                        *prev = hit;
+                        *e = entity;
+                    }
+                } else {
+                    closest_ray = Some((entity, hit));
+                }
+            }
+        }
+
+        closest_ray
     }
 }
