@@ -1,6 +1,6 @@
 use crate::tiled::collision::{Collision, TileLayerCollision};
 use crate::tiled::{JobCommandsExt, MapLoader, SpriteLoader, SpriteTableLoader};
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use alloc::{format, vec};
 use bevy_app::{App, Last, Plugin, PostUpdate, Startup, Update};
 use bevy_ecs::prelude::{
@@ -92,7 +92,7 @@ fn display_job(q_test: Query<&JobTestComponent>, jobs: Res<Jobs>, timer: Res<Run
                 draw_text(format!("current: {}", counter.0), 64, y).unwrap();
             }
             Some(JobStatusRef::Success(())) => {
-                draw_text("finished".to_string(), 64, y).unwrap();
+                draw_text("finished", 64, y).unwrap();
             }
             _ => {
                 draw_text("in progress", 64, y).unwrap();
@@ -141,16 +141,6 @@ fn test_ray(
 
     for camera in camera {
         let camera = camera.0;
-
-        let hit = collision.circle_cast(
-            camera,
-            12.0,
-            rot,
-            ShapeCastOptions {
-                max_time_of_impact: distance,
-                ..ShapeCastOptions::default()
-            },
-        );
 
         let mut rays = collision.move_and_slide(
             camera,
@@ -223,7 +213,7 @@ fn control_job(
 }
 
 fn move_camera(
-    mut camera: Option<Single<(&mut Transform, &GlobalTransform), With<Camera>>>,
+    camera: Option<Single<(&mut Transform, &GlobalTransform), With<Camera>>>,
     input: Res<ButtonInput<PlaydateButton>>,
     time: Res<Time>,
     collision: Collision,
@@ -266,6 +256,8 @@ fn move_camera(
     }
 }
 
+#[allow(dead_code)]
+#[allow(clippy::type_complexity)]
 fn print_recursive(
     level: usize,
     entity: Entity,

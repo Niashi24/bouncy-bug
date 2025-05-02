@@ -1,13 +1,11 @@
-use crate::angle::PDAngle;
-use crate::sprite::{Sprite, SpriteRotation};
+use crate::sprite::Sprite;
 use crate::transform::{GlobalTransform, Transform};
 use bevy_app::{App, Plugin, PostUpdate};
 use bevy_ecs::change_detection::*;
 use bevy_ecs::prelude::*;
-use bevy_math::{Affine2, Affine3A, EulerRot, Vec2};
+use bevy_math::Vec2;
 use bevy_reflect::Reflect;
 use bevy_reflect::prelude::ReflectDefault;
-use core::ops::Deref;
 use playdate::graphics::Graphics;
 use playdate::sprite::draw_sprites;
 
@@ -53,13 +51,14 @@ pub fn reset_removed_camera(
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn sync_sprite_transform(
     mut q_sprite: Query<
         (&GlobalTransform, &mut Sprite),
         Or<(Changed<GlobalTransform>, Added<Sprite>)>,
     >,
 ) {
-    for (transform, mut spr) in q_sprite.iter_mut() {
+    for (transform, spr) in q_sprite.iter_mut() {
         spr.move_to(transform.x, transform.y);
     }
 }

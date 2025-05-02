@@ -1,4 +1,4 @@
-use alloc::vec::Vec;
+﻿use alloc::vec::Vec;
 use bevy_app::{App, Plugin, PostStartup, PostUpdate};
 use bevy_ecs::prelude::*;
 use bevy_math::Vec2;
@@ -85,6 +85,7 @@ impl From<Transform> for GlobalTransform {
 ///
 /// Third party plugins should ensure that this is used in concert with
 /// [`propagate_parent_transforms`] and [`mark_dirty_trees`].
+#[allow(clippy::type_complexity)]
 pub fn sync_simple_transforms(
     mut query: ParamSet<(
         Query<
@@ -119,6 +120,7 @@ pub fn sync_simple_transforms(
 /// Optimization for static scenes. Propagates a "dirty bit" up the hierarchy towards ancestors.
 /// Transform propagation can ignore entire subtrees of the hierarchy if it encounters an entity
 /// without the dirty bit.
+#[allow(clippy::type_complexity)]
 pub fn mark_dirty_trees(
     changed_transforms: Query<
         Entity,
@@ -145,6 +147,7 @@ pub fn mark_dirty_trees(
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn propagate_parent_transforms(
     mut root_query: Query<
         (Entity, &Children, Ref<Transform>, &mut GlobalTransform),
@@ -217,6 +220,7 @@ pub fn propagate_parent_transforms(
     unsafe_code,
     reason = "This function uses `Query::get_unchecked()`, which can result in multiple mutable references if the preconditions are not met."
 )]
+#[allow(clippy::type_complexity)]
 unsafe fn propagate_recursive(
     parent: &GlobalTransform,
     transform_query: &Query<

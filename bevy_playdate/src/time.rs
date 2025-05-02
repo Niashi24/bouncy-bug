@@ -1,21 +1,18 @@
 use crate::debug::in_debug;
-use crate::sprite::PostSprite;
+use crate::sprite::SpriteSystemSet;
 use alloc::format;
-use bevy_app::{App, First, FixedUpdate, Plugin, PostUpdate};
+use bevy_app::{App, First, Plugin, PostUpdate};
 use bevy_ecs::prelude::{IntoScheduleConfigs, ResMut, Resource};
 use bevy_ecs::system::Res;
 use bevy_platform::time::Instant;
 use bevy_time::{Time, TimePlugin};
-use core::cell::UnsafeCell;
-use core::ffi::c_uint;
 use core::time::Duration;
-use playdate::api;
 use playdate::graphics::bitmap::LCDColorConst;
 use playdate::graphics::fill_rect;
 use playdate::graphics::text::draw_text;
 use playdate::sys::ffi::LCDColor;
-use playdate::system::System;
 use playdate::system::api::Cache;
+use playdate::system::System;
 
 /// Whatever you do, do NOT call reset_elapsed_time.
 /// Use the utilities from [`bevy_time`], such as [`bevy_time::Timer`]
@@ -29,7 +26,7 @@ impl Plugin for PDTimePlugin {
         app.add_plugins(TimePlugin);
         app.init_resource::<RunningTimer>()
             .add_systems(First, RunningTimer::update_system);
-        app.add_systems(PostSprite, debug_time.run_if(in_debug));
+        app.add_systems(PostUpdate, debug_time.run_if(in_debug).after(SpriteSystemSet));
     }
 }
 

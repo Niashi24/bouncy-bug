@@ -10,8 +10,7 @@ use bevy_input::ButtonInput;
 use bevy_math::IVec2;
 use core::time::Duration;
 use playdate::graphics::bitmap::LCDColorConst;
-use playdate::graphics::text::draw_text;
-use playdate::graphics::{Graphics, draw_line, fill_rect};
+use playdate::graphics::{draw_line, fill_rect, Graphics};
 use playdate::sprite::draw_sprites;
 use playdate::sys::ffi::LCDColor;
 use playdate::system::System;
@@ -40,6 +39,7 @@ pub fn in_debug(debug: Res<Debug>) -> bool {
     debug.enabled
 }
 
+#[allow(dead_code)]
 fn debug_sprite(sprite: Query<&Sprite>) {
     let graphics = Graphics::Cached();
     for spr in sprite.iter() {

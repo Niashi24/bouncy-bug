@@ -7,14 +7,13 @@ use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 use bevy_app::{App, Last, Plugin};
-use bevy_ecs::event::{Event, EventWriter};
+use bevy_ecs::event::Event;
 use bevy_ecs::prelude::{In, Local, Mut, Resource};
 use bevy_ecs::system::{BoxedSystem, IntoSystem, System, SystemId};
 use bevy_ecs::world::World;
 use core::any::Any;
 use core::cmp::Ordering;
 use core::marker::PhantomData;
-use core::mem::MaybeUninit;
 use core::ops::{Deref, DerefMut};
 use derive_more::From;
 use hashbrown::HashMap;
@@ -362,11 +361,9 @@ impl<TWork: Any, TSuccess: Any, TError: Any> From<WorkResult<TWork, TSuccess, TE
 }
 use crate::asset::{AssetAsync, ResAssetCache};
 use crate::file::FileHandle;
-use diagnostic::dbg;
-use genawaiter::GeneratorState;
 use genawaiter::sync::{Co, Gen};
+use genawaiter::GeneratorState;
 use no_std_io2::io::{Error, Read};
-use playdate::println;
 
 fn new_gen_job_simple<S: Any, E: Any>(
     mut generator: Gen<(), (), impl Future<Output = Result<S, E>> + 'static + Send + Sync>,
@@ -446,8 +443,10 @@ pub trait GenJobExtensions {
 pub enum JobRequest {
     Yield,
     Skip,
-    WithWorld(Box<dyn FnOnce(&mut World) -> Box<dyn Any + Send> + Send>),
+    WithWorld(WithWorldFn),
 }
+
+pub type WithWorldFn = Box<dyn FnOnce(&mut World) -> Box<dyn Any + Send> + Send>;
 
 #[derive(Default)]
 pub enum JobResponse {
@@ -474,7 +473,6 @@ impl GenJobExtensions for Co<JobRequest, JobResponse> {
 
         *response
             .downcast::<T>()
-            .ok()
             .expect("received response should be ")
     }
 
@@ -489,7 +487,7 @@ impl GenJobExtensions for Co<JobRequest, JobResponse> {
                 let path = path.clone();
                 move |world| {
                     let cache = world.resource::<ResAssetCache>();
-                    cache.0.read().unwrap().get::<A>(&*path)
+                    cache.0.read().unwrap().get::<A>(&path)
                 }
             })
             .await;
@@ -512,7 +510,7 @@ impl GenJobExtensions for Co<JobRequest, JobResponse> {
 }
 
 pub async fn load_file_bytes(load_cx: &mut AsyncLoadCtx, path: &str) -> Result<Vec<u8>, Error> {
-    let mut file = FileHandle::read_only(&path)?;
+    let mut file = FileHandle::read_only(path)?;
     let mut bytes = Vec::with_capacity(128);
     let mut file_length = 0;
 

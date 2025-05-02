@@ -2,15 +2,12 @@ use alloc::vec::Vec;
 use bevy_playdate::jobs::{load_file_bytes, AsyncLoadCtx};
 use core::fmt::{Debug, Formatter};
 use core::marker::PhantomData;
-use derive_more::{Display, Error, From};
-use diagnostic::dbg;
 use tiledpd::rkyv::api::high::HighValidator;
 use tiledpd::rkyv::bytecheck::CheckBytes;
 use tiledpd::rkyv::seal::Seal;
 use tiledpd::rkyv::util::AlignedVec;
 use tiledpd::rkyv::Portable;
 use tiledpd::RkyvError;
-// use derive_more::*;
 
 const ALIGNMENT: usize = 16;
 pub type AlignVec = AlignedVec<ALIGNMENT>;
@@ -35,11 +32,9 @@ where
     T: Portable + for<'a> CheckBytes<HighValidator<'a, RkyvError>>,
 {
     pub fn new(bytes: AlignVec) -> Result<Self, RkyvError> {
-        if let Err(err) = tiledpd::rkyv::access::<T, RkyvError>(&bytes) {
-            return Err(err);
-        }
+        let _ = tiledpd::rkyv::access::<T, RkyvError>(&bytes)?;
 
-        let out = Self(bytes, PhantomData::default());
+        let out = Self(bytes, PhantomData);
         out.assert_aligned();
 
         Ok(out)

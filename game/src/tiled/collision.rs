@@ -6,12 +6,10 @@ use bevy_math::Vec2;
 use bevy_playdate::transform::GlobalTransform;
 use core::fmt::{Debug, Formatter};
 use derive_more::{Display, Error};
-use diagnostic::dbg;
 use itertools::Itertools;
 use parry2d::na::{Isometry2, Point2, Vector2};
 use parry2d::query::{Contact, Ray, RayCast, RayIntersection, ShapeCastHit, ShapeCastOptions};
 use parry2d::shape::{Ball, Compound, Segment, SharedShape};
-use pd::sys::log::println;
 use tiledpd::tilemap::ArchivedLayerCollision;
 
 #[derive(Component, Clone)]
@@ -30,7 +28,7 @@ impl TileLayerCollision {
     ) -> Option<RayIntersection> {
         self.0.cast_ray_and_get_normal(
             &Isometry2::translation(transform.x, transform.y),
-            &ray,
+            ray,
             max_time_of_impact,
             true,
         )
@@ -141,11 +139,11 @@ impl<'w, 's> Collision<'w, 's> {
     pub fn overlap_circle(&self, pos: Vec2, r: f32) -> Option<Entity> {
         self.layers
             .iter()
-            .find(|(e, layer, transform)| layer.overlap_circle(transform, pos, r))
+            .find(|(_, layer, transform)| layer.overlap_circle(transform, pos, r))
             .map(|(e, _, _)| e)
     }
 
-    pub fn raycast<'a>(
+    pub fn raycast(
         &self,
         ray: &Ray,
         max_time_of_impact: f32,
@@ -224,7 +222,7 @@ pub fn reflect_ray(dir: Vec2, normal: Vec2) -> Result<Vec2, CastRepeatEnd> {
 pub fn slide_to_surface(dir: Vec2, normal: Vec2) -> Result<Vec2, CastRepeatEnd> {
     let dir_n = dir.normalize_or_zero();
     // 1 degree of leeway to detect if it is a 90-degree angle
-    const DEGREE_CUTOFF: f32 = 0.0001523048436;
+    const DEGREE_CUTOFF: f32 = 0.00015230484;
     if dir_n.dot(normal).abs() < DEGREE_CUTOFF {
         Err(CastRepeatEnd::NinetyDegree)
     } else {

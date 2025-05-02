@@ -6,16 +6,10 @@ use bevy_ecs::entity::Entity;
 use bevy_ecs::name::Name;
 use bevy_ecs::prelude::{Component, EntityCommands};
 use bevy_ecs::reflect::ReflectCommandExt;
-use bevy_math::{Rot2, Vec2};
 use bevy_platform::sync::Arc;
-use bevy_playdate::transform::{GlobalTransform, Transform};
-use bevy_reflect::Reflect;
+use bevy_playdate::transform::Transform;
 use hashbrown::HashMap;
-use itertools::Itertools;
-use parry2d::na::{Isometry2, Point2, Vector2};
-use parry2d::query::{Ray, RayCast, RayIntersection, ShapeCastHit, ShapeCastOptions};
-use parry2d::shape::{Ball, Compound, Polyline, Segment, SharedShape};
-use tiledpd::tilemap::{ArchivedLayerCollision, ArchivedObjectShape};
+use tiledpd::tilemap::ArchivedObjectShape;
 
 /// WARNING: This component is only used to keep a reference to the Arc<Map> data.
 ///
@@ -26,7 +20,7 @@ pub struct MapHandle(pub Arc<Map>);
 
 #[derive(Component, Clone)]
 pub struct TileLayer {
-    map: Arc<Map>,
+    _map: Arc<Map>,
     tiles: HashMap<[u32; 2], Entity>,
 }
 
@@ -38,30 +32,27 @@ impl TileLayer {
 
 pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
     entity_commands.insert(MapHandle(Arc::clone(&map)));
-    let map_data = map.map.data.access();
+    // let map_data = map.map.data.access();
     // spawn all objects and create object-id-to-entity map
     let objects = {
         let mut objects: HashMap<u32, Entity> = HashMap::new();
         let mut entity_name: Vec<(Entity, _)> = Vec::new();
 
         for layer in map.layers() {
-            match layer.data() {
-                LayerData::ObjectLayer { data, .. } => {
-                    for obj in data.objects.iter() {
-                        let id = obj.id.to_native();
-                        let entity = entity_commands.commands_mut().spawn_empty().id();
-                        objects.insert(id, entity);
-                        // optimization, insert batch
-                        entity_name.push((
-                            entity,
-                            (
-                                Name::new(obj.name.to_string()),
-                                Transform::from_xy(obj.x.to_native(), obj.y.to_native()),
-                            ),
-                        ));
-                    }
+            if let LayerData::ObjectLayer { data, .. } = layer.data() {
+                for obj in data.objects.iter() {
+                    let id = obj.id.to_native();
+                    let entity = entity_commands.commands_mut().spawn_empty().id();
+                    objects.insert(id, entity);
+                    // optimization, insert batch
+                    entity_name.push((
+                        entity,
+                        (
+                            Name::new(obj.name.to_string()),
+                            Transform::from_xy(obj.x.to_native(), obj.y.to_native()),
+                        ),
+                    ));
                 }
-                _ => {}
             }
         }
 
@@ -107,25 +98,19 @@ pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
                             continue;
                         }
 
-                        let width = tile_layer.width.to_native();
+                        // let width = tile_layer.width.to_native();
                         layer_entity.with_children(|c| {
-                            for (i, tile) in tile_layer.tiles().enumerate() {
+                            for tile in tile_layer.tiles() {
                                 let Some(tile) = tile else {
                                     continue;
                                 };
 
-                                // map.tilesets
-
+                                // leaving this here for when i need to spawn other things
                                 // let i = i as u32;
                                 // let [x, y] = [i % width, i / width];
                                 // let [x, y] = [x * map_data.tile_width, y * map_data.tile_height];
 
                                 let mut tile_entity = c.spawn((Name::new("Tile"),));
-
-                                // let mut tile_entity = layer_e.
-                                //     .spawn((
-                                //         Name::new("Tile"),
-                                //     ));
 
                                 let (_, properties) = tile.data();
                                 for property in properties.properties.iter() {

@@ -1,35 +1,29 @@
 use alloc::borrow::Cow;
-use alloc::boxed::Box;
-use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use bevy_app::{App, Last, Plugin, Startup};
 use bevy_ecs::change_detection::ResMut;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::event::EventReader;
-use bevy_ecs::prelude::{Commands, Component, EntityCommands, IntoScheduleConfigs, Query, World};
+use bevy_ecs::prelude::{Commands, Component, EntityCommands, IntoScheduleConfigs, Query};
 use bevy_ecs::reflect::AppTypeRegistry;
-use bevy_ecs::system::{NonSendMut, Res};
-use bevy_ecs::world::{DeferredWorld, EntityWorldMut};
+use bevy_ecs::system::{Res};
+use bevy_ecs::world::{EntityWorldMut};
 use bevy_platform::sync::Arc;
-use bevy_reflect::{PartialReflect, Reflect};
-use core::marker::PhantomData;
+use bevy_reflect::{Reflect};
 use core::ops::Deref;
 use derive_more::Deref;
-use no_std_io2::io::{Error, Read, Write};
-use pd::graphics::error::ApiError;
+use no_std_io2::io::Write;
 use pd::sys::ffi::LCDBitmapFlip;
-// use tiled::{DefaultResourceCache, Loader, Map, ResourceCache, ResourcePath, Template, Tileset};
 use crate::rkyv::{load_compressed_archive, OwnedArchived};
 use crate::tiled::load::{DeserializedMapProperties, DeserializedProperties};
 use bevy_playdate::asset::{
-    AssetAsync, AssetCache, BitmapAsset, BitmapRef, BitmapTableAsset, ResAssetCache,
+    AssetAsync, BitmapAsset, BitmapRef, BitmapTableAsset,
 };
 use bevy_playdate::file::{BufferedWriter, FileHandle};
 use bevy_playdate::jobs::{
     AsyncLoadCtx, GenJobExtensions, JobFinished, JobHandle, Jobs, JobsScheduler,
 };
 use bevy_playdate::sprite::Sprite;
-use diagnostic::dbg;
 use tiledpd::tilemap::{
     ArchivedImageLayer, ArchivedLayer, ArchivedLayerData, ArchivedObjectLayer, ArchivedTileLayer,
     ArchivedTilemap,
@@ -189,7 +183,7 @@ impl Layer<'_> {
         map_properties: &'a DeserializedMapProperties<true>,
     ) -> &'a DeserializedProperties {
         let id = self.id;
-        &map_properties.layers.get(&id.to_native()).unwrap()
+        map_properties.layers.get(&id.to_native()).unwrap()
     }
 
     // pub fn as_tile_layer(&self) -> Option<TileLayer> {
@@ -233,7 +227,7 @@ impl TileLayer<'_> {
 
 #[derive(Deref)]
 pub struct ObjectLayer<'map> {
-    map: &'map Map,
+    _map: &'map Map,
     #[deref]
     data: &'map ArchivedObjectLayer,
 }

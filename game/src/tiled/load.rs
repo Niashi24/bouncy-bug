@@ -1,4 +1,4 @@
-use alloc::borrow::ToOwned;
+﻿use alloc::borrow::ToOwned;
 use alloc::boxed::Box;
 use alloc::format;
 use alloc::string::{String, ToString};
@@ -15,15 +15,11 @@ use bevy_reflect::{
 use hashbrown::HashMap;
 use tiledpd::properties::{ArchivedProperties, ArchivedPropertyValue};
 use tiledpd::tilemap::{ArchivedLayerData, ArchivedTilemap};
-// use tiled::{LayerType, Properties, PropertyValue, TileId};
-
-type TileId = u32;
 
 #[derive(Debug, Clone)]
 pub struct DeserializedMapProperties<const HYDRATED: bool = false> {
     pub map: DeserializedProperties,
     pub layers: HashMap<u32, DeserializedProperties>,
-    // pub(crate) tiles: HashMap<String, HashMap<TileId, DeserializedProperties>>,
     pub objects: HashMap<u32, DeserializedProperties>,
 }
 
@@ -129,7 +125,7 @@ impl DeserializedProperties {
     pub fn load(
         properties: &ArchivedProperties,
         registry: &TypeRegistry,
-        load_cx: (),
+        _load_cx: (),
         resources_allowed: bool,
     ) -> Self {
         let mut props: Vec<Box<dyn PartialReflect>> = Vec::new();
@@ -205,7 +201,7 @@ impl DeserializedProperties {
             value = Self::deserialize_property(pv, reg, registry, load_cx, default_value)?;
         } else if let Some(def) = default_value {
             // If a default value from parent is provided, use it
-            value = def.clone_value().into_partial_reflect();
+            value = def.to_dynamic();
         } else if let Some(def) = default_value_from_type_path(registry, field.type_path()) {
             // If no default value from parent is not provided, try to use type default()
             value = def.into_partial_reflect();
@@ -246,7 +242,7 @@ impl DeserializedProperties {
             value = Self::deserialize_property(pv, reg, registry, load_cx, default_value)?;
         } else if let Some(def) = default_value {
             // If a default value from parent is provided, use it
-            value = def.clone_value().into_partial_reflect();
+            value = def.to_dynamic();
         } else if let Some(default_value) =
             default_value_from_type_path(registry, field.type_path())
         {
@@ -323,7 +319,7 @@ impl DeserializedProperties {
                 Ok(Box::new(Some(Entity::from_raw(o)).filter(|_| o != 0)))
             }
             (_, PV::StringValue(s), TypeInfo::Enum(info)) => {
-                let Some(variant) = info.variant(&s) else {
+                let Some(variant) = info.variant(s) else {
                     return Err(format!("no variant `{}` for `{}`", s, info.type_path()));
                 };
 
@@ -466,7 +462,7 @@ impl DeserializedProperties {
 
                 if let Some(PV::StringValue(variant_name)) = properties.get(":variant") {
                     if let Some(PV::ClassValue { properties, .. }) = properties.get(variant_name) {
-                        let variant_out = match info.variant(&variant_name) {
+                        let variant_out = match info.variant(variant_name) {
                             Some(VariantInfo::Struct(variant_info)) => {
                                 let mut out = DynamicStruct::default();
                                 for field in variant_info.iter() {
@@ -507,7 +503,7 @@ impl DeserializedProperties {
                             )),
                         }?;
                         out.set_variant_with_index(
-                            info.index_of(&variant_name).unwrap(),
+                            info.index_of(variant_name).unwrap(),
                             variant_name.to_string(),
                             variant_out,
                         );
@@ -518,7 +514,7 @@ impl DeserializedProperties {
 
                 if let Some(default_value) = default_value {
                     if let ReflectRef::Enum(e) = default_value.reflect_ref() {
-                        out = e.clone_dynamic();
+                        out = e.to_dynamic_enum();
                         return Ok(Box::new(out));
                     }
                 }
@@ -560,7 +556,7 @@ fn object_ref(
     obj_entity_map: &HashMap<u32, Entity>,
 ) -> Option<Box<dyn PartialReflect>> {
     if obj.represents::<Entity>() {
-        let obj = Entity::take_from_reflect(obj.clone_value()).unwrap();
+        let obj = Entity::take_from_reflect(obj.to_dynamic()).unwrap();
         if let Some(&e) = obj_entity_map.get(&obj.index()) {
             Some(Box::new(e))
         } else {
@@ -572,7 +568,7 @@ fn object_ref(
     } else if obj.represents::<Option<Entity>>() {
         // maybe the map get should panic actually
         Some(Box::new(
-            Option::<Entity>::take_from_reflect(obj.clone_value())
+            Option::<Entity>::take_from_reflect(obj.to_dynamic())
                 .unwrap()
                 .and_then(|obj| obj_entity_map.get(&obj.index()).copied()),
         ))
@@ -640,7 +636,6 @@ fn hydrate(object: &mut dyn PartialReflect, obj_entity_map: &HashMap<u32, Entity
         ReflectMut::Set(_) => {}
         // we don't care about any of the other values
         ReflectMut::Opaque(_) => {}
-        _ => {}
     }
 }
 

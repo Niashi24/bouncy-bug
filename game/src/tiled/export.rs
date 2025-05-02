@@ -11,7 +11,7 @@ use bevy_reflect::{
     ArrayInfo, EnumInfo, NamedField, PartialReflect, Reflect, ReflectRef, StructInfo, TupleInfo,
     TupleStructInfo, TypeInfo, TypeRegistration, TypeRegistry, UnnamedField, VariantInfo,
 };
-use derive_more::{Display, Error};
+use derive_more::Display;
 use hashbrown::HashMap;
 
 const DEFAULT_COLOR: &str = "#000000";
@@ -149,16 +149,16 @@ impl TypeExportRegistry {
 
         if out.is_ok() {
             let mut new_deps = dependencies(registration, registry);
-            if new_deps.iter().all(|n| {
+            return if new_deps.iter().all(|n| {
                 if let Some(t) = registry.get_with_type_path(n) {
                     return Self::is_supported(t);
                 }
                 false
             }) {
                 deps.append(&mut new_deps);
-                return out;
+                out
             } else {
-                return Err(ExportConversionError::DependencyError);
+                Err(ExportConversionError::DependencyError)
             }
         }
         out

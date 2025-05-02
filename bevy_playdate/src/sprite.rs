@@ -1,12 +1,10 @@
-use crate::angle::PDAngle;
 use crate::asset::{BitmapAsset, BitmapRef};
 use crate::transform::Transform;
-use alloc::vec::Vec;
 use bevy_app::{App, Plugin, PostUpdate};
 use bevy_ecs::component::{Component, HookContext};
+use bevy_ecs::prelude::SystemSet;
 use bevy_ecs::schedule::IntoScheduleConfigs;
-use bevy_ecs::schedule::ScheduleLabel;
-use bevy_ecs::world::{DeferredWorld, World};
+use bevy_ecs::world::DeferredWorld;
 use bevy_platform::sync::Arc;
 use derive_more::Deref;
 use playdate::api;
@@ -14,28 +12,19 @@ use playdate::graphics::api::Cache;
 use playdate::graphics::bitmap::Bitmap;
 use playdate::graphics::color::Color;
 use playdate::graphics::{BitmapFlip, BitmapFlipExt, Graphics};
-use playdate::sprite::{Sprite as PDSprite, draw_sprites};
-use playdate::sys::ffi::LCDBitmapFlip;
+use playdate::sprite::{draw_sprites, Sprite as PDSprite};
 use playdate::sys::traits::AsRaw;
 
 pub struct SpritePlugin;
 
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, SystemSet)]
+pub struct SpriteSystemSet;
+
 impl Plugin for SpritePlugin {
     fn build(&self, app: &mut App) {
         // todo: reflect component
-        app.add_systems(PostUpdate, (draw_sprites, run_post_sprite).chain());
+        app.add_systems(PostUpdate, draw_sprites.in_set(SpriteSystemSet));
     }
-}
-
-/// A schedule that is triggered in [`PostUpdate`] after [`draw_sprites`] is called.
-/// The screen is effectively cleared when `draw_sprites` is called,
-/// so this if you want to draw something in a immediate-mode sense (using the draw_{} calls)
-/// and don't want to have to put `.after(draw_sprites)` everywhere.
-#[derive(Copy, Clone, Hash, Eq, PartialEq, Debug, ScheduleLabel)]
-pub struct PostSprite;
-
-pub fn run_post_sprite(world: &mut World) {
-    world.run_schedule(PostSprite);
 }
 
 #[derive(Component, Clone, Deref)]
@@ -123,83 +112,4 @@ impl Default for Sprite {
     fn default() -> Self {
         Self::new()
     }
-}
-
-/// Controls how the sprite is shown when it is rotated.
-#[derive(Component, Clone, Default)]
-pub enum SpriteRotation {
-    /// No rotation. Ignores any changes to angle.
-    #[default]
-    Ignore,
-    /// Uses [`Bitmap::rotated_clone`] to redraw the bitmap when rotation changes.
-    Redraw {
-        /// The bitmap that is rotated.
-        /// If `None`, uses the current bitmap on the sprite.
-        reference: Option<Arc<Bitmap>>,
-        rotated_info: RotatedInfo,
-    },
-    /// Precompute each [`Bitmap::rotated_clone`] in a certain number of directions.
-    /// Use [`SpriteRotation::cached`] to auto-generate.
-    Cached(Vec<Arc<Bitmap>>, RotatedInfo),
-}
-
-// SAFETY: The Playdate is single-threaded.
-// The component trait requires Send + Sync
-unsafe impl Send for SpriteRotation {}
-unsafe impl Sync for SpriteRotation {}
-
-impl SpriteRotation {
-    /// Pre-computes a rotation of
-    pub fn cached(sprite: &Sprite, resolution: usize) -> Self {
-        let mut directions = Vec::with_capacity(resolution);
-        // for i in 0..resolution {
-        //     let angle = i as f32 / resolution as f32 * 360.0;
-        //     let rotated = sprite
-        //         .bitmap.0
-        //         .rotated_clone(angle, 1.0, 1.0)
-        //         .expect("precompute bitmap rotated clone");
-        //     directions.push(Arc::new(rotated));
-        // }
-        todo!();
-
-        let rotation_info = RotatedInfo {
-            center: sprite.center(),
-        };
-
-        Self::Cached(directions, rotation_info)
-    }
-
-    // pub fn sample_rotation(&self, sprite: &Sprite, angle: PDAngle) -> Arc<BitmapAsset> {
-    //     match self {
-    //         SpriteRotation::Ignore => sprite.bitmap.clone(),
-    //         SpriteRotation::Redraw { reference, .. } => {
-    //             let rotated = reference
-    //                 .as_ref()
-    //                 .unwrap_or(&sprite.bitmap)
-    //                 .rotated_clone(angle, 1.0, 1.0)
-    //                 .expect("rotate SpriteRotation::Redraw bitmap");
-    //
-    //             Arc::new(rotated)
-    //         }
-    //         SpriteRotation::Cached(directions, ..) => {
-    //             // dbg!(angle);
-    //             let idx =
-    //                 ((-angle + 720.0 + 90.0) % 360.0 * directions.len() as f32 / 360.0) as usize;
-    //             directions.get(idx).unwrap_or(&empty_bitmap()).clone()
-    //         }
-    //     }
-    // }
-
-    pub fn is_rotated(&self) -> Option<&RotatedInfo> {
-        match self {
-            SpriteRotation::Ignore => None,
-            SpriteRotation::Redraw { rotated_info, .. } => Some(rotated_info),
-            SpriteRotation::Cached(_, rotated_info) => Some(rotated_info),
-        }
-    }
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct RotatedInfo {
-    pub center: (f32, f32),
 }

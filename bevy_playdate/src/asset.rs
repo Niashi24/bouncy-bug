@@ -1,4 +1,4 @@
-use crate::jobs::{AsyncLoadCtx, GenJobExtensions};
+use crate::jobs::AsyncLoadCtx;
 use alloc::borrow::Cow;
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -7,13 +7,12 @@ use bevy_ecs::prelude::Resource;
 use bevy_platform::sync::{Arc, LazyLock, RwLock, Weak};
 use core::any::{Any, TypeId};
 use core::ops::Index;
+use derive_more::derive::From;
 use derive_more::Deref;
-use derive_more::derive::{From, Index};
-use diagnostic::dbg;
 use hashbrown::HashMap;
 use playdate::graphics::api;
-use playdate::graphics::bitmap::Bitmap;
 use playdate::graphics::bitmap::table::BitmapTable;
+use playdate::graphics::bitmap::Bitmap;
 use playdate::graphics::error::ApiError;
 use playdate::println;
 
@@ -39,7 +38,7 @@ impl Default for ResAssetCache {
     }
 }
 
-pub static ASSET_CACHE: LazyLock<RwLock<AssetCache>> = LazyLock::new(|| RwLock::default());
+pub static ASSET_CACHE: LazyLock<RwLock<AssetCache>> = LazyLock::new(RwLock::default);
 
 // SAFETY: playdate is single threaded
 // unsafe impl Send for AssetCache {}
@@ -74,7 +73,7 @@ impl AssetCache {
     pub fn debug_loaded(&self) {
         println!("asset cache contains:");
         for ((name, _), item) in &self.cache {
-            if let Some(_) = item.upgrade() {
+            if item.upgrade().is_some() {
                 println!("  {name}");
             } else {
                 println!("  {name} (unloaded)");
@@ -155,6 +154,10 @@ impl BitmapTableAsset {
     pub fn len(&self) -> usize {
         self.bitmaps.len()
     }
+    
+    pub fn is_empty(&self) -> bool {
+        self.bitmaps.is_empty()
+    }
 }
 
 impl AssetAsync for BitmapTableAsset {
@@ -195,7 +198,7 @@ impl BitmapRef {
 impl AsRef<BitmapAsset> for BitmapRef {
     fn as_ref(&self) -> &BitmapAsset {
         match self {
-            BitmapRef::Bitmap(bitmap_asset) => &bitmap_asset,
+            BitmapRef::Bitmap(bitmap_asset) => bitmap_asset,
             BitmapRef::Table(bitmap_table_asset, i) => &bitmap_table_asset[*i],
         }
     }
