@@ -1,10 +1,8 @@
 mod pdtiled;
 
-use hashbrown::HashSet;
-use image::{GenericImage, GenericImageView};
+use crate::pdtiled::{convert_map, convert_tileset};
 use indexmap::IndexSet;
 use regex::Regex;
-use std::cell::LazyCell;
 use std::ffi::OsStr;
 use std::fs;
 use std::io::ErrorKind;
@@ -12,16 +10,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
 use std::sync::LazyLock;
-use tiled::{Properties, PropertyValue, TileLayer};
-use tiledpd::AddDependencies;
 use tiledpd::dependencies::AddDependenciesMut;
-use toml_edit::{Array, Item, Table, Value, value};
-// use tiledpd::properties::PropertyValue2;
-use crate::pdtiled::{convert_map, convert_property, convert_tileset};
-use tiledpd::properties::{ArchivedPropertyValue, PropertyValue as PVPD};
-use tiledpd::rkyv::util::AlignedVec;
-use tiledpd::tilemap::{ArchivedTilemap, Tile, Tilemap};
-use tiledpd::tileset::ArchivedTileset;
+use toml_edit::{value, Item, Table};
 
 fn main() -> anyhow::Result<()> {
     let game_toml = std::fs::read_to_string("game/Cargo.toml")?;
@@ -150,8 +140,6 @@ impl Assets {
         self.assets_to_process.insert(asset);
     }
 
-    pub fn add_pd_asset(&mut self, asset: String) {}
-
     pub fn fulfill_next(&mut self) -> Option<PathBuf> {
         let path = self.assets_to_process.pop()?;
 
@@ -240,7 +228,7 @@ fn process_asset_paths(assets: &mut Assets, asset_paths: Vec<&mut String>, origi
         static IMAGE_TABLE_REGEX: LazyLock<Regex> =
             LazyLock::new(|| Regex::new(r#"(?<name>.*)-table-\d+(?:-\d+)?\..+"#).unwrap());
 
-        if let Some(captures) = IMAGE_TABLE_REGEX.captures(&asset) {
+        if let Some(captures) = IMAGE_TABLE_REGEX.captures(asset) {
             // pc stuff
             {
                 let path = Path::new(asset.trim_start_matches("assets\\"));
@@ -258,7 +246,7 @@ fn process_asset_paths(assets: &mut Assets, asset_paths: Vec<&mut String>, origi
                 // now "tiles" (not sure why this is here, but we ball)
                 let path = Path::new(name.trim_start_matches("assets\\"));
                 // now "parent\tiles"
-                let mut path = origin.parent().unwrap().join(path);
+                let path = origin.parent().unwrap().join(path);
                 // now "parent/tiles"
                 *asset = path.to_string_lossy().to_string().replace("\\", "/");
             }

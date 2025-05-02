@@ -1,7 +1,6 @@
 use crate::ASSET_PATH;
 use geo::{BooleanOps, Coord, LineString, MultiPolygon, Polygon};
 use image::{GenericImageView, RgbaImage};
-use itertools::Itertools;
 use std::mem;
 use std::ops::Deref;
 use std::path::PathBuf;
@@ -15,9 +14,6 @@ use tiledpd::tilemap::{
 };
 use tiledpd::tilemap::{LayerCollision, Tilemap};
 use tiledpd::tileset::{TileData, Tileset};
-
-pub const TILEMAP_BINARY_EXT: &str = "tmb";
-pub const TILESET_BINARY_EXT: &str = "tsb";
 
 pub fn convert_map(map: tiled::Map) -> Tilemap {
     let layers = map.layers().map(|layer| convert_layer(layer)).collect();
@@ -224,7 +220,7 @@ pub fn render_layer_tile(tile: LayerTile) -> RgbaImage {
     // let image = tile.get_tileset().image.as_ref().unwrap();
 
     let mut image = if let Some(image) = tile.get_tileset().image.as_ref() {
-        let mut image = image::open(&image.source).unwrap().to_rgba8();
+        let image = image::open(&image.source).unwrap().to_rgba8();
 
         let tiles_x = image.width() / tile.get_tileset().tile_width;
 
@@ -255,6 +251,7 @@ pub fn render_layer_tile(tile: LayerTile) -> RgbaImage {
     image
 }
 
+#[allow(dead_code)]
 fn print_image(image: &RgbaImage) {
     for y in 0..image.height() {
         for x in 0..image.width() {
