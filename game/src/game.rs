@@ -1,53 +1,52 @@
-﻿use alloc::{format, vec};
+use crate::tiled::collision::{Collision, TileLayerCollision};
+use crate::tiled::{JobCommandsExt, MapLoader, SpriteLoader, SpriteTableLoader};
 use alloc::string::{String, ToString};
-use core::ops::{Deref, DerefMut};
+use alloc::{format, vec};
 use bevy_app::{App, Last, Plugin, PostUpdate, Startup, Update};
-use bevy_ecs::entity::Entity;
-use bevy_ecs::name::Name;
-use bevy_ecs::prelude::{Children, Component, IntoScheduleConfigs, With};
-use bevy_ecs::system::{Commands, In, Query, Res, ResMut, Single};
+use bevy_ecs::prelude::{
+    Children, Commands, Component, Entity, In, IntoScheduleConfigs, Name, Query, Res, ResMut,
+    Single, With,
+};
 use bevy_input::ButtonInput;
-use bevy_math::{Dir2, Rot2, Vec2};
-use bevy_time::Time;
-use parry2d::na::{Point2, Vector2};
-use parry2d::query::{Ray, ShapeCastOptions};
-use bevy_playdate::transform::{GlobalTransform, Transform};
-use bevy_playdate::asset::ResAssetCache;
+use bevy_math::{Rot2, Vec2};
+use bevy_playdate::debug::in_debug;
 use bevy_playdate::input::{CrankInput, PlaydateButton};
 use bevy_playdate::jobs::{JobHandle, JobStatusRef, Jobs, JobsScheduler, WorkResult};
 use bevy_playdate::sprite::Sprite;
 use bevy_playdate::time::RunningTimer;
-use pd::graphics::color::{Color, LCDColorConst};
-use pd::graphics::{fill_rect, Graphics, LineCapStyle};
+use bevy_playdate::transform::{GlobalTransform, Transform};
+use bevy_playdate::view::Camera;
+use bevy_time::Time;
+use parry2d::query::ShapeCastOptions;
 use pd::graphics::api::Cache;
+use pd::graphics::color::{Color, LCDColorConst};
 use pd::graphics::text::draw_text;
+use pd::graphics::{fill_rect, Graphics, LineCapStyle};
 use pd::sprite::draw_sprites;
 use pd::sys::ffi::LCDColor;
-use bevy_playdate::debug::{in_debug, Debug};
-use bevy_playdate::view::Camera;
-use diagnostic::dbg;
-use crate::tiled::{JobCommandsExt, Map, MapLoader, SpriteLoader, SpriteTableLoader, TiledMap, TiledSet};
-use crate::tiled::spawn::{MapHandle};
-use crate::tiled::collision::{reflect_ray, Collision, TileLayerCollision};
-// use crate::pdtiled::loader::TiledLoader;
 
 pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, test_spawn_job);
-        // app.add_systems(Startup, draw_test);
-        // app.add_systems(Update, draw_text_test);
-        app.add_systems(Update, move_camera);
-        app.add_systems(Last, (control_job, display_job).chain().after(Jobs::run_jobs_system));
-        app.add_systems(PostUpdate, (debug_shape.run_if(in_debug)).after(draw_sprites));
+        app.add_systems(Startup, test_spawn_job)
+            .add_systems(Update, move_camera)
+            .add_systems(
+                Last,
+                (control_job, display_job)
+                    .chain()
+                    .after(Jobs::run_jobs_system),
+            )
+            .add_systems(
+                PostUpdate,
+                (debug_shape.run_if(in_debug)).after(draw_sprites),
+            );
     }
 }
 
 fn test_spawn_job(mut commands: Commands, mut jobs: ResMut<JobsScheduler>) {
-    
     commands.spawn(Sprite::new_from_draw(10, 10, Color::BLACK, |_| {}));
-    
+
     commands.spawn(JobTestComponent {
         job: jobs.add(0, TestJob(0), test_job),
     });
@@ -60,29 +59,33 @@ fn test_spawn_job(mut commands: Commands, mut jobs: ResMut<JobsScheduler>) {
     commands.spawn(JobTestComponent {
         job: jobs.add(1, TestJob(6000), test_job),
     });
-    
-    commands.spawn((
-        Name::new("Test sprite"),
-        Transform::from_xy(20.0, 200.0),
-    ))
-        .insert_loading_asset(SpriteTableLoader {
-            sprite_loader: SpriteLoader::default(),
-            index: 2,
-        }, 0, "assets/tiles");
+
+    commands
+        .spawn((Name::new("Test sprite"), Transform::from_xy(20.0, 200.0)))
+        .insert_loading_asset(
+            SpriteTableLoader {
+                sprite_loader: SpriteLoader::default(),
+                index: 2,
+            },
+            0,
+            "assets/tiles",
+        );
 }
 
-
-
 fn display_job(q_test: Query<&JobTestComponent>, jobs: Res<Jobs>, timer: Res<RunningTimer>) {
-    
     let mut y = 64;
     fill_rect(64, y, 150, 16, LCDColor::WHITE);
-    draw_text(format!("r: {:.3}ms", timer.time_in_frame().as_secs_f32() * 1000.0), 64, y).unwrap();
-    
+    draw_text(
+        format!("r: {:.3}ms", timer.time_in_frame().as_secs_f32() * 1000.0),
+        64,
+        y,
+    )
+    .unwrap();
+
     y += 16;
     for test in q_test.iter() {
         let progress = jobs.progress(&test.job);
-        
+
         fill_rect(64, y, 150, 16, LCDColor::WHITE);
         match progress {
             Some(JobStatusRef::InProgress(counter)) => {
@@ -95,16 +98,12 @@ fn display_job(q_test: Query<&JobTestComponent>, jobs: Res<Jobs>, timer: Res<Run
                 draw_text("in progress", 64, y).unwrap();
             }
         }
-        
+
         y += 16;
     }
-    
-    
 }
 
-fn debug_shape(
-    tile_layer_collision: Query<(&TileLayerCollision, &GlobalTransform)>,
-) {
+fn debug_shape(tile_layer_collision: Query<(&TileLayerCollision, &GlobalTransform)>) {
     let draw = Graphics::new_with(Cache::default());
     for (layer, transform) in tile_layer_collision.iter() {
         for (_, shape) in layer.0.shapes() {
@@ -115,29 +114,34 @@ fn debug_shape(
             let mut b = segment.b;
             b.x += transform.x;
             b.y += transform.y;
-            draw.draw_line(a.x as i32, a.y as i32, b.x as i32, b.y as i32, 2, LCDColor::XOR);
+            draw.draw_line(
+                a.x as i32,
+                a.y as i32,
+                b.x as i32,
+                b.y as i32,
+                2,
+                LCDColor::XOR,
+            );
         }
     }
 }
 
+#[allow(dead_code)]
 fn test_ray(
     collision: Collision,
     camera: Query<&GlobalTransform, With<Camera>>,
     input: Res<CrankInput>,
 ) {
-    // if input.docked { return; }
-
     let graphics = Graphics::new_with(Cache::default());
     graphics.set_line_cap_style(LineCapStyle::kLineCapStyleRound);
     let rot = Rot2::from(input.angle.to_radians());
     let rot = Vec2::new(rot.cos, rot.sin);
-    
+
     let distance = 400.0;
-    
+
     for camera in camera {
         let camera = camera.0;
-        
-        // let ray = Ray::new(Point2::new(camera.x, camera.y), Vector2::from([rot.cos, rot.sin]));
+
         let hit = collision.circle_cast(
             camera,
             12.0,
@@ -147,7 +151,7 @@ fn test_ray(
                 ..ShapeCastOptions::default()
             },
         );
-        
+
         let mut rays = collision.move_and_slide(
             camera,
             rot,
@@ -155,11 +159,11 @@ fn test_ray(
             ShapeCastOptions {
                 max_time_of_impact: distance,
                 ..ShapeCastOptions::default()
-            }
+            },
         );
-        
+
         let mut last_point = camera;
-        while let Ok(hit) = rays.fire() {
+        while let Ok(_hit) = rays.fire() {
             graphics.draw_line(
                 last_point.x as i32,
                 last_point.y as i32,
@@ -168,7 +172,7 @@ fn test_ray(
                 24,
                 LCDColor::BLACK,
             );
-            
+
             last_point = rays.pos;
         }
         graphics.draw_line(
@@ -181,7 +185,15 @@ fn test_ray(
         );
 
         if collision.overlap_circle(camera, 12.0).is_some() {
-            graphics.fill_ellipse(camera.x as i32 - 12, camera.y as i32 - 12, 24, 24, 0.0, 0.0, LCDColor::XOR);
+            graphics.fill_ellipse(
+                camera.x as i32 - 12,
+                camera.y as i32 - 12,
+                24,
+                24,
+                0.0,
+                0.0,
+                LCDColor::XOR,
+            );
         }
     }
 }
@@ -192,62 +204,22 @@ fn control_job(
     mut scheduler: ResMut<JobsScheduler>,
     mut commands: Commands,
     input: Res<ButtonInput<PlaydateButton>>,
-    asset_cache: Res<ResAssetCache>,
-    q_map_root: Query<(&Name, &Children), With<MapHandle>>,
-    q_name: Query<((&Name, Option<&GlobalTransform>), Option<&Children>)>,
-    q_transform: Query<&GlobalTransform>,
-    q_sprite: Query<&Sprite>,
-    debug: Res<Debug>,
-    camera: Query<&Transform, With<Camera>>,
 ) {
     if input.just_pressed(PlaydateButton::A) {
-        
-        commands.spawn(JobTestComponent {
-            job: scheduler.add(100, TestJob(9500), test_job),
-        })
+        commands
+            .spawn(JobTestComponent {
+                job: scheduler.add(100, TestJob(9500), test_job),
+            })
             .insert((Name::new("Map"), Transform::from_xy(100.0, 20.0)))
             .insert_loading_asset(MapLoader, -10, "assets/level-1.tmb");
     }
-    
+
     if input.just_pressed(PlaydateButton::B) {
         jobs.clear_all();
         for (e, _) in q_test.iter() {
             commands.entity(e).despawn();
         }
-        // if let Some((e, job)) = q_test.iter().next() {
-        //     jobs.cancel(&job.job);
-        //     commands.entity(e).despawn();
-        // }
     }
-    
-    
-    // if input.just_pressed(PlaydateButton::Down) && debug.enabled {
-    //     println!("here");
-    //     for (name, children) in q_map_root {
-    //         println!("{}", name);
-    //         for &child in children {
-    //             print_recursive(0, child, &q_name);
-    //         }
-    //     }
-    //     asset_cache.0.try_read().unwrap().debug_loaded();
-    //     dbg!(q_transform.iter().len());
-    //     dbg!(q_sprite.iter().len());
-    //     if let Ok(camera) = camera.single() {
-    //         dbg!(camera.0);
-    //     }
-    // }
-    // let mut file = FileHandle::read_only("assets/test-map.tmx").unwrap();
-    // let mut bytes = Vec::new();
-    // file.read_to_end(&mut bytes).unwrap();
-    // let s = String::from_utf8(bytes).unwrap();
-    // // println!("{s}");
-    // for line in s.lines() {
-    //     println!("{line}");
-    // }
-    // let mut reader = EventReader::new(FileHandle::read_only("assets/test-map.tmx").unwrap());
-    // for event in reader.into_iter() {
-    //     println!("{event:?}");
-    // }
 }
 
 fn move_camera(
@@ -256,25 +228,32 @@ fn move_camera(
     time: Res<Time>,
     collision: Collision,
 ) {
-    let Some(camera) = camera else { return; };
-    
+    let Some(camera) = camera else {
+        return;
+    };
+
     let mut x = 0;
     x += input.pressed(PlaydateButton::Right) as i32;
     x -= input.pressed(PlaydateButton::Left) as i32;
     let mut y = 0;
     y += input.pressed(PlaydateButton::Down) as i32;
     y -= input.pressed(PlaydateButton::Up) as i32;
-    
+
     if x != 0 || y != 0 {
         let (mut camera, transform) = camera.into_inner();
         let vel = Vec2::new(x as f32, y as f32).normalize() * 150.0;
-        let mut move_and_slide = collision.move_and_slide(transform.0, vel, 12.0, ShapeCastOptions {
-            max_time_of_impact: time.delta_secs(),
-            ..ShapeCastOptions::default()
-        });
-        
+        let mut move_and_slide = collision.move_and_slide(
+            transform.0,
+            vel,
+            12.0,
+            ShapeCastOptions {
+                max_time_of_impact: time.delta_secs(),
+                ..ShapeCastOptions::default()
+            },
+        );
+
         while let Ok(_hit) = move_and_slide.fire() {}
-        
+
         // safety check:
         let new_pos = if let Some((_, contact)) = collision.contact(move_and_slide.pos, 12.0) {
             let translation = contact.dist * Vec2::new(contact.normal1.x, contact.normal1.y);
@@ -294,8 +273,15 @@ fn print_recursive(
 ) {
     let ((name, pos), children) = q_name.get(entity).unwrap();
     let pos_str = pos.map(|s| s.0).map(|p| format!(" @ {:?}", p));
-    println!("{}↳ {}{}", String::from_utf8(vec![b' '; level * 2]).unwrap(), name, pos_str.unwrap_or_default());
-    let Some(children) = children else { return; };
+    println!(
+        "{}↳ {}{}",
+        String::from_utf8(vec![b' '; level * 2]).unwrap(),
+        name,
+        pos_str.unwrap_or_default()
+    );
+    let Some(children) = children else {
+        return;
+    };
     for &child in children {
         print_recursive(level + 1, child, q_name);
     }
@@ -312,82 +298,10 @@ struct TestJob(pub i32);
 fn test_job(counter: In<TestJob>) -> WorkResult<TestJob, (), ()> {
     let mut counter = counter.0;
     counter.0 += 1;
-        
+
     if counter.0 >= 10000 {
         WorkResult::Success(())
     } else {
         WorkResult::Continue(counter)
     }
 }
-
-// enum JobTest {
-//     
-// }
-
-// #[derive(Component)]
-// pub struct TextTest {
-//     text: String,
-// }
-// 
-// fn draw_test(mut loader: TiledLoader, mut commands: Commands) {
-    // Loader::with_reader()
-    // commands.
-    // let mut file = FileHandle::read_only("assets/test-map.tmx").unwrap();
-    // let mut bytes = Vec::new();
-    // file.read_to_end(&mut bytes).unwrap();
-    // let s = String::from_utf8(bytes).unwrap();
-    // // println!("{s}");
-    // for line in s.lines() {
-    //     println!("{line}");
-    // }
-    
-    // let tileset = loader.load_tmx_map("assets/test-map.tmx").unwrap();
-    // println!("{:?}", tileset.tilesets());
-    // loader.0.0.lock().unwrap().debug_loaded();
-    // // // // println!("{:?}", tileset);
-    // println!("{:?}", tileset);
-    // black_box(&tileset);
-    
-    
-    // 
-    // let mut file = FileHandle::write_only("test.txt", false).unwrap();
-    // let mut writer = BufferedWriter::<_, 512>::new(file);
-    // writer.write_fmt(format_args!("{:?}", tileset)).unwrap();
-    // println!("wrote tilemap to file")
-    // let mut x = BufWriter::<_, 1000>::new(file);
-    // let out = format!("{:?}", tileset);
-    // file.write(out.as_bytes()).unwrap();
-    
-    // commands.spawn(TextTest {
-    //     text: format!("{:?}", tileset),
-    // });
-    
-    // commands.spawn(Sprite::new());
-// }
-
-// fn draw_text_test(
-//     input: Res<CrankInput>,
-//     texts: Query<&TextTest>,
-// ) {
-//     let t = input.angle / 360.0;
-//     const CHARS_EACH: usize = 40;
-//     let mut y = 0;
-//     for text in texts {
-//         let idx = (text.text.len() as f32 * t) as usize;
-//         let txt = text.text.split_at(idx).1;
-//         let txt = if txt.len() < CHARS_EACH {
-//             txt
-//         } else {
-//             txt.split_at(CHARS_EACH).0
-//         };
-//         draw_text(txt, 20, y).unwrap();
-//         
-//         y += 20;
-//     }
-// }
-// 
-// fn crank_test(input: Res<CrankInput>) {
-//     draw_line(10 + input.angle as i32, 50, 10 + input.angle as i32 + 100, 70, 5, LCDColor::XOR);
-//     
-//     draw_ellipse(100, 20, 200, 200, 5, input.angle + 10.0, input.angle - 10.0, LCDColor::XOR);
-// }

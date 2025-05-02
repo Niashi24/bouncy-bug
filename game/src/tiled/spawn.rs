@@ -1,4 +1,5 @@
-﻿use crate::tiled::{JobCommandsExt, LayerData, Map, SpriteLoader, SpriteTableLoader, Static};
+use crate::tiled::collision::TileLayerCollision;
+use crate::tiled::{JobCommandsExt, LayerData, Map, SpriteLoader, SpriteTableLoader, Static};
 use alloc::string::ToString;
 use alloc::vec::Vec;
 use bevy_ecs::entity::Entity;
@@ -6,16 +7,15 @@ use bevy_ecs::name::Name;
 use bevy_ecs::prelude::{Component, EntityCommands};
 use bevy_ecs::reflect::ReflectCommandExt;
 use bevy_math::{Rot2, Vec2};
-use bevy_playdate::transform::{GlobalTransform, Transform};
-use hashbrown::HashMap;
-use tiledpd::tilemap::{ArchivedLayerCollision, ArchivedObjectShape};
 use bevy_platform::sync::Arc;
+use bevy_playdate::transform::{GlobalTransform, Transform};
 use bevy_reflect::Reflect;
+use hashbrown::HashMap;
 use itertools::Itertools;
 use parry2d::na::{Isometry2, Point2, Vector2};
 use parry2d::query::{Ray, RayCast, RayIntersection, ShapeCastHit, ShapeCastOptions};
 use parry2d::shape::{Ball, Compound, Polyline, Segment, SharedShape};
-use crate::tiled::collision::TileLayerCollision;
+use tiledpd::tilemap::{ArchivedLayerCollision, ArchivedObjectShape};
 
 /// WARNING: This component is only used to keep a reference to the Arc<Map> data.
 ///
@@ -36,8 +36,6 @@ impl TileLayer {
     }
 }
 
-
-
 pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
     entity_commands.insert(MapHandle(Arc::clone(&map)));
     let map_data = map.map.data.access();
@@ -45,7 +43,7 @@ pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
     let objects = {
         let mut objects: HashMap<u32, Entity> = HashMap::new();
         let mut entity_name: Vec<(Entity, _)> = Vec::new();
-        
+
         for layer in map.layers() {
             match layer.data() {
                 LayerData::ObjectLayer { data, .. } => {
@@ -59,23 +57,22 @@ pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
                             (
                                 Name::new(obj.name.to_string()),
                                 Transform::from_xy(obj.x.to_native(), obj.y.to_native()),
-                            )
+                            ),
                         ));
                     }
                 }
                 _ => {}
             }
         }
-        
-        entity_commands.commands_mut()
-            .insert_batch(entity_name);
-        
+
+        entity_commands.commands_mut().insert_batch(entity_name);
+
         objects
     };
-    
+
     let mut hydrated = map.map.properties.clone().hydrate(&objects);
     let mut z_index = 0;
-    
+
     entity_commands.with_children(|commands| {
         for layer in map.layers() {
             let mut layer_entity = commands.spawn((
@@ -85,8 +82,7 @@ pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
             ));
             let reflect = hydrated.layers.remove(&layer.id.to_native()).unwrap();
 
-            let is_static = reflect.properties.iter()
-                .any(|s| s.represents::<Static>());
+            let is_static = reflect.properties.iter().any(|s| s.represents::<Static>());
 
             for component in reflect.properties {
                 layer_entity.insert_reflect(component);
@@ -95,13 +91,17 @@ pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
             match layer.data() {
                 LayerData::TileLayer(tile_layer) => {
                     layer_entity.insert(TileLayerCollision::from(&tile_layer.layer_collision));
-                    
+
                     if let Some(image) = tile_layer.image.as_ref() {
                         z_index += 1;
-                        layer_entity.insert_loading_asset(SpriteLoader {
-                            center: [0.0; 2],
-                            z_index,
-                        }, 10, image.to_string());
+                        layer_entity.insert_loading_asset(
+                            SpriteLoader {
+                                center: [0.0; 2],
+                                z_index,
+                            },
+                            10,
+                            image.to_string(),
+                        );
 
                         if is_static {
                             continue;
@@ -120,9 +120,7 @@ pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
                                 // let [x, y] = [i % width, i / width];
                                 // let [x, y] = [x * map_data.tile_width, y * map_data.tile_height];
 
-                                let mut tile_entity = c.spawn((
-                                    Name::new("Tile"),
-                                ));
+                                let mut tile_entity = c.spawn((Name::new("Tile"),));
 
                                 // let mut tile_entity = layer_e.
                                 //     .spawn((
@@ -146,38 +144,43 @@ pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
                         let entity = *objects.get(&obj.id.to_native()).unwrap();
                         layer_entity.add_child(entity);
                         let mut object = layer_entity.commands_mut().entity(entity);
-                        
+
                         let reflect = hydrated.objects.remove(&obj.id.to_native()).unwrap();
                         for property in reflect.properties {
                             object.insert_reflect(property);
                         }
-                        
+
                         if let &ArchivedObjectShape::Tile(tile) = &obj.shape {
                             let tileset = &map.tilesets[tile.get_tilemap_idx() as usize];
                             let path = tileset.data.access().image_path.to_string();
-                            
+
                             z_index += 1;
-                            object.insert_loading_asset(SpriteTableLoader {
-                                sprite_loader: SpriteLoader {
-                                    z_index,
-                                    ..SpriteLoader::default()
+                            object.insert_loading_asset(
+                                SpriteTableLoader {
+                                    sprite_loader: SpriteLoader {
+                                        z_index,
+                                        ..SpriteLoader::default()
+                                    },
+                                    index: tile.tile_id as usize,
                                 },
-                                index: tile.tile_id as usize,
-                            }, 10, path);
+                                10,
+                                path,
+                            );
                         }
                     }
                 }
                 LayerData::ImageLayer(image_layer) => {
                     z_index += 1;
-                    layer_entity
-                        .insert_loading_asset(SpriteLoader {
+                    layer_entity.insert_loading_asset(
+                        SpriteLoader {
                             center: [0.0; 2],
                             z_index,
-                        }, 10, image_layer.source.to_string());
+                        },
+                        10,
+                        image_layer.source.to_string(),
+                    );
                 }
             }
         }
     });
-    
-    
 }

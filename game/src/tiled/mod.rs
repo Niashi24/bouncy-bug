@@ -1,9 +1,7 @@
-﻿use alloc::borrow::Cow;
+use alloc::borrow::Cow;
 use alloc::boxed::Box;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
-use core::marker::PhantomData;
-use core::ops::Deref;
 use bevy_app::{App, Last, Plugin, Startup};
 use bevy_ecs::change_detection::ResMut;
 use bevy_ecs::entity::Entity;
@@ -12,29 +10,38 @@ use bevy_ecs::prelude::{Commands, Component, EntityCommands, IntoScheduleConfigs
 use bevy_ecs::reflect::AppTypeRegistry;
 use bevy_ecs::system::{NonSendMut, Res};
 use bevy_ecs::world::{DeferredWorld, EntityWorldMut};
-use no_std_io2::io::{Error, Read, Write};
 use bevy_platform::sync::Arc;
 use bevy_reflect::{PartialReflect, Reflect};
+use core::marker::PhantomData;
+use core::ops::Deref;
 use derive_more::Deref;
+use no_std_io2::io::{Error, Read, Write};
 use pd::graphics::error::ApiError;
 use pd::sys::ffi::LCDBitmapFlip;
 // use tiled::{DefaultResourceCache, Loader, Map, ResourceCache, ResourcePath, Template, Tileset};
-use bevy_playdate::asset::{AssetAsync, AssetCache, BitmapAsset, BitmapRef, BitmapTableAsset, ResAssetCache};
-use bevy_playdate::file::{BufferedWriter, FileHandle};
-use bevy_playdate::jobs::{AsyncLoadCtx, GenJobExtensions, JobFinished, JobHandle, Jobs, JobsScheduler};
-use bevy_playdate::sprite::Sprite;
-use diagnostic::dbg;
-use tiledpd::tilemap::{ArchivedImageLayer, ArchivedLayer, ArchivedLayerData, ArchivedObjectLayer, ArchivedTileLayer, ArchivedTilemap};
-use tiledpd::tileset::{ArchivedTileData, ArchivedTileset};
 use crate::rkyv::{load_compressed_archive, OwnedArchived};
 use crate::tiled::load::{DeserializedMapProperties, DeserializedProperties};
+use bevy_playdate::asset::{
+    AssetAsync, AssetCache, BitmapAsset, BitmapRef, BitmapTableAsset, ResAssetCache,
+};
+use bevy_playdate::file::{BufferedWriter, FileHandle};
+use bevy_playdate::jobs::{
+    AsyncLoadCtx, GenJobExtensions, JobFinished, JobHandle, Jobs, JobsScheduler,
+};
+use bevy_playdate::sprite::Sprite;
+use diagnostic::dbg;
+use tiledpd::tilemap::{
+    ArchivedImageLayer, ArchivedLayer, ArchivedLayerData, ArchivedObjectLayer, ArchivedTileLayer,
+    ArchivedTilemap,
+};
+use tiledpd::tileset::{ArchivedTileData, ArchivedTileset};
 
-pub mod spawn;
-mod export;
-mod types_json;
-mod load;
-pub mod job;
 pub mod collision;
+mod export;
+pub mod job;
+mod load;
+pub mod spawn;
+mod types_json;
 
 pub struct TiledPlugin;
 
@@ -45,13 +52,12 @@ impl Plugin for TiledPlugin {
         add_loader::<SpriteLoader>(app);
         add_loader::<MapLoader>(app);
         add_loader::<SpriteTableLoader>(app);
-        
+
         app.register_type::<Static>();
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Default, Hash)]
-#[derive(Component, Reflect)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Default, Hash, Component, Reflect)]
 pub struct Static;
 
 pub type TilemapData = OwnedArchived<ArchivedTilemap>;
@@ -68,17 +74,17 @@ impl AssetAsync for TiledMap {
 
     async fn load(load_cx: &mut AsyncLoadCtx, path: &str) -> Result<Self, Self::Error> {
         let data = load_compressed_archive::<ArchivedTilemap>(load_cx, path).await?;
-        
+
         load_cx.yield_next().await;
 
-        let out = load_cx.with_world(move |world| {
-            let app_registry = world.resource::<AppTypeRegistry>();
-            let properties = DeserializedMapProperties::load(data.access(), app_registry.0.read().deref());
-            TiledMap {
-                data,
-                properties
-            }
-        }).await;
+        let out = load_cx
+            .with_world(move |world| {
+                let app_registry = world.resource::<AppTypeRegistry>();
+                let properties =
+                    DeserializedMapProperties::load(data.access(), app_registry.0.read().deref());
+                TiledMap { data, properties }
+            })
+            .await;
 
         Ok(out)
     }
@@ -103,18 +109,27 @@ impl AssetAsync for TiledSet {
         // dbg!(access);
         load_cx.yield_next().await;
 
-        let out = load_cx.with_world(move |world| {
-            let app_registry = world.resource::<AppTypeRegistry>();
-            
-            let properties = data.access().tiles.iter()
-                .map(|tile| DeserializedProperties::load(&tile.properties, app_registry.0.read().deref(), (), false))
-                .collect();
-            
-            TiledSet {
-                data,
-                properties
-            }
-        }).await;
+        let out = load_cx
+            .with_world(move |world| {
+                let app_registry = world.resource::<AppTypeRegistry>();
+
+                let properties = data
+                    .access()
+                    .tiles
+                    .iter()
+                    .map(|tile| {
+                        DeserializedProperties::load(
+                            &tile.properties,
+                            app_registry.0.read().deref(),
+                            (),
+                            false,
+                        )
+                    })
+                    .collect();
+
+                TiledSet { data, properties }
+            })
+            .await;
 
         Ok(out)
     }
@@ -127,21 +142,19 @@ pub struct Map {
 }
 
 impl Map {
-    pub fn layers(&self) -> impl Iterator<Item=Layer> {
+    pub fn layers(&self) -> impl Iterator<Item = Layer> {
         let map = self.map.data.access();
-        map.layers.iter()
-            .map(move |layer| Layer {
-                map: self,
-                layer,
-            })
+        map.layers
+            .iter()
+            .map(move |layer| Layer { map: self, layer })
     }
-    
+
     pub fn get_tile_data(&self, tile: TileData) -> (&ArchivedTileData, &DeserializedProperties) {
         let map = tile.get_tilemap_idx();
         let tile_n = tile.tile_id;
-        
+
         let tileset = &self.tilesets[map as usize];
-        
+
         let tile_data = &tileset.data.access().tiles[tile_n as usize];
         let properties = &tileset.properties[tile_n as usize];
 
@@ -170,12 +183,15 @@ impl Layer<'_> {
             ArchivedLayerData::ImageLayer(layer) => LayerData::ImageLayer(layer),
         }
     }
-    
-    pub fn deserialized_properties<'a>(&self, map_properties: &'a DeserializedMapProperties<true>) -> &'a DeserializedProperties {
+
+    pub fn deserialized_properties<'a>(
+        &self,
+        map_properties: &'a DeserializedMapProperties<true>,
+    ) -> &'a DeserializedProperties {
         let id = self.id;
         &map_properties.layers.get(&id.to_native()).unwrap()
     }
-    
+
     // pub fn as_tile_layer(&self) -> Option<TileLayer> {
     //     if let ArchivedLayerData::TileLayer(layer) = &self.layer_data {
     //         Some(TileLayer {
@@ -205,13 +221,13 @@ pub struct TileLayer<'map> {
 }
 
 impl TileLayer<'_> {
-    pub fn tiles(&self) -> impl Iterator<Item=Option<Tile>> {
-        self.data.tiles.iter()
-            .map(|tile| tile.as_ref()
-                .map(|t| Tile {
-                    map: self.map,
-                    tile: *t,
-                }))
+    pub fn tiles(&self) -> impl Iterator<Item = Option<Tile>> {
+        self.data.tiles.iter().map(|tile| {
+            tile.as_ref().map(|t| Tile {
+                map: self.map,
+                tile: *t,
+            })
+        })
     }
 }
 
@@ -248,18 +264,17 @@ impl AssetAsync for Map {
 
     async fn load(load_cx: &mut AsyncLoadCtx, path: &str) -> Result<Self, Self::Error> {
         let map = load_cx.load_asset::<TiledMap>(path.into()).await?;
-        
+
         let archived_map = map.data.access();
         let mut tilesets = Vec::with_capacity(archived_map.tilesets.len());
         for tileset in archived_map.tilesets.iter() {
-            let tileset = load_cx.load_asset::<TiledSet>(Arc::from(tileset.as_str())).await?;
+            let tileset = load_cx
+                .load_asset::<TiledSet>(Arc::from(tileset.as_str()))
+                .await?;
             tilesets.push(tileset);
         }
-        
-        Ok(Self {
-            map,
-            tilesets,
-        })
+
+        Ok(Self { map, tilesets })
     }
 }
 
@@ -270,22 +285,25 @@ fn export_types(reg: Res<AppTypeRegistry>) {
     let registry = export::TypeExportRegistry::from_registry(reg.0.read().deref());
     let output = serde_json::to_vec_pretty(&registry.to_vec()).unwrap();
     writer.write_all(&output).unwrap();
-    
+
     println!("exported types to {path}");
 }
 
 pub trait AssetLoader: 'static + Send + Sync {
     type Asset: AssetAsync;
-    
+
     fn on_finish_load(
         &self,
         commands: &mut EntityCommands,
-        result: Result<Arc<Self::Asset>, <<Self as AssetLoader>::Asset as AssetAsync>::Error>
+        result: Result<Arc<Self::Asset>, <<Self as AssetLoader>::Asset as AssetAsync>::Error>,
     );
 }
 
 pub fn add_loader<A: AssetLoader>(app: &mut App) {
-    app.add_systems(Last, LoadingAsset::<A>::try_load_system.after(Jobs::run_jobs_system));
+    app.add_systems(
+        Last,
+        LoadingAsset::<A>::try_load_system.after(Jobs::run_jobs_system),
+    );
 }
 
 #[derive(Component, Default)]
@@ -306,15 +324,16 @@ impl<A: AssetLoader> LoadingAsset<A> {
         mut finished_events: EventReader<JobFinished>,
     ) {
         for job in finished_events.read() {
-            if let Some((e, job)) = q_loading.iter()
-                .find(|(_, loading)| loading.job.id() == job.job_id) {
-                let result = jobs.try_claim(&job.job)
-                    .expect("claim result from Jobs");
+            if let Some((e, job)) = q_loading
+                .iter()
+                .find(|(_, loading)| loading.job.id() == job.job_id)
+            {
+                let result = jobs.try_claim(&job.job).expect("claim result from Jobs");
 
                 let mut entity = commands.entity(e);
                 // removes both LoadingAsset and Loading
                 entity.remove_with_requires::<Self>();
-                job.loader.on_finish_load(&mut entity, result); 
+                job.loader.on_finish_load(&mut entity, result);
             }
         }
     }
@@ -374,19 +393,27 @@ impl AssetLoader for MapLoader {
 }
 
 pub trait JobCommandsExt {
-    fn insert_loading_asset<A: AssetLoader>(&mut self, loader: A, priority: isize, path: impl Into<Cow<'static, str>>) -> &mut Self;
+    fn insert_loading_asset<A: AssetLoader>(
+        &mut self,
+        loader: A,
+        priority: isize,
+        path: impl Into<Cow<'static, str>>,
+    ) -> &mut Self;
 }
 
 impl<'a> JobCommandsExt for EntityCommands<'a> {
-    fn insert_loading_asset<A: AssetLoader>(&mut self, loader: A, priority: isize, path: impl Into<Cow<'static, str>>) -> &mut Self {
+    fn insert_loading_asset<A: AssetLoader>(
+        &mut self,
+        loader: A,
+        priority: isize,
+        path: impl Into<Cow<'static, str>>,
+    ) -> &mut Self {
         let path = path.into();
         self.queue(move |mut world: EntityWorldMut| {
-            let job = world.resource_mut::<JobsScheduler>()
+            let job = world
+                .resource_mut::<JobsScheduler>()
                 .load_asset::<A::Asset>(priority, path);
-            world.insert(LoadingAsset {
-                job,
-                loader,
-            });
+            world.insert(LoadingAsset { job, loader });
         })
     }
 }
@@ -401,11 +428,14 @@ pub struct SpriteTableLoader {
 impl AssetLoader for SpriteTableLoader {
     type Asset = BitmapTableAsset;
 
-    fn on_finish_load(&self, commands: &mut EntityCommands, result: Result<Arc<Self::Asset>, <<Self as AssetLoader>::Asset as AssetAsync>::Error>) {
+    fn on_finish_load(
+        &self,
+        commands: &mut EntityCommands,
+        result: Result<Arc<Self::Asset>, <<Self as AssetLoader>::Asset as AssetAsync>::Error>,
+    ) {
         let table = result.unwrap();
         let image = BitmapRef::from_table(table, self.index);
 
         commands.insert(self.sprite_loader.to_sprite(image));
     }
 }
-

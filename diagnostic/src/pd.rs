@@ -1,5 +1,4 @@
-﻿
-pub use playdate_sys::println as println;
+pub use playdate_sys::println;
 
 #[macro_export]
 macro_rules! dbg {

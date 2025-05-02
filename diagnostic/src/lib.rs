@@ -1,4 +1,3 @@
-
 #![no_std]
 
 #[cfg(all(feature = "std", feature = "pd"))]
@@ -11,10 +10,7 @@ mod pd;
 #[cfg(feature = "std")]
 mod std;
 
-#[cfg(feature = "std")]
-pub use std::*;
 #[cfg(feature = "pd")]
 pub use pd::*;
-
-
-
+#[cfg(feature = "std")]
+pub use std::*;

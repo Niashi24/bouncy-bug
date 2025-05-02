@@ -1,17 +1,17 @@
-﻿use alloc::sync::Arc;
-use core::fmt::{Debug, Formatter};
+use alloc::sync::Arc;
 use bevy_ecs::component::Component;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::system::{Query, SystemParam};
 use bevy_math::Vec2;
+use bevy_playdate::transform::GlobalTransform;
+use core::fmt::{Debug, Formatter};
 use derive_more::{Display, Error};
+use diagnostic::dbg;
 use itertools::Itertools;
 use parry2d::na::{Isometry2, Point2, Vector2};
 use parry2d::query::{Contact, Ray, RayCast, RayIntersection, ShapeCastHit, ShapeCastOptions};
 use parry2d::shape::{Ball, Compound, Segment, SharedShape};
 use pd::sys::log::println;
-use bevy_playdate::transform::GlobalTransform;
-use diagnostic::dbg;
 use tiledpd::tilemap::ArchivedLayerCollision;
 
 #[derive(Component, Clone)]
@@ -28,32 +28,23 @@ impl TileLayerCollision {
         ray: &Ray,
         max_time_of_impact: f32,
     ) -> Option<RayIntersection> {
-        // let ray = Ray::new(
-        //     Point2::new(pos.x - transform.x, pos.y - transform.y),
-        //     Vector2::from([dir.cos, dir.sin])
-        // );
-
         self.0.cast_ray_and_get_normal(
             &Isometry2::translation(transform.x, transform.y),
             &ray,
             max_time_of_impact,
-            true
+            true,
         )
     }
 
-    pub fn overlap_circle(
-        &self,
-        transform: &GlobalTransform,
-        pos: Vec2,
-        r: f32,
-    ) -> bool {
+    pub fn overlap_circle(&self, transform: &GlobalTransform, pos: Vec2, r: f32) -> bool {
         let ball = Ball::new(r);
         parry2d::query::intersection_test(
             &Isometry2::translation(pos.x, pos.y),
             &ball,
             &Isometry2::translation(transform.x, transform.y),
-            &self.0
-        ).unwrap()
+            &self.0,
+        )
+        .unwrap()
     }
 
     pub fn circle_cast(
@@ -73,15 +64,11 @@ impl TileLayerCollision {
             &Vector2::zeros(),
             &self.0,
             options,
-        ).unwrap()
+        )
+        .unwrap()
     }
-    
-    pub fn contact(
-        &self,
-        transform: &GlobalTransform,
-        pos: Vec2,
-        r: f32,
-    ) -> Option<Contact> {
+
+    pub fn contact(&self, transform: &GlobalTransform, pos: Vec2, r: f32) -> Option<Contact> {
         let ball = Ball::new(r);
         parry2d::query::contact(
             &Isometry2::translation(pos.x, pos.y),
@@ -89,30 +76,40 @@ impl TileLayerCollision {
             &Isometry2::translation(transform.x, transform.y),
             &self.0,
             0.0,
-        ).unwrap()
+        )
+        .unwrap()
     }
 }
 
 impl From<&ArchivedLayerCollision> for TileLayerCollision {
     fn from(value: &ArchivedLayerCollision) -> Self {
         Self(Compound::new(
-            value.lines.iter()
+            value
+                .lines
+                .iter()
                 .flat_map(|line| {
                     line.iter()
                         .map(|p| Point2::new(p.0.to_native(), p.1.to_native()))
                         .tuple_windows()
                         .map(|(a, b)| Segment::new(a, b))
-                }
-                )
+                })
                 .map(|polyline| (Isometry2::identity(), SharedShape(Arc::new(polyline))))
-                .collect()
+                .collect(),
         ))
     }
 }
 
 #[derive(SystemParam)]
 pub struct Collision<'w, 's> {
-    layers: Query<'w, 's, (Entity, &'static TileLayerCollision, &'static GlobalTransform)>
+    layers: Query<
+        'w,
+        's,
+        (
+            Entity,
+            &'static TileLayerCollision,
+            &'static GlobalTransform,
+        ),
+    >,
 }
 
 impl<'w, 's> Collision<'w, 's> {
@@ -140,13 +137,10 @@ impl<'w, 's> Collision<'w, 's> {
 
         out
     }
-    
-    pub fn overlap_circle(
-        &self,
-        pos: Vec2,
-        r: f32,
-    ) -> Option<Entity> {
-        self.layers.iter()
+
+    pub fn overlap_circle(&self, pos: Vec2, r: f32) -> Option<Entity> {
+        self.layers
+            .iter()
             .find(|(e, layer, transform)| layer.overlap_circle(transform, pos, r))
             .map(|(e, _, _)| e)
     }
@@ -174,25 +168,42 @@ impl<'w, 's> Collision<'w, 's> {
 
         closest_ray
     }
-    
-    pub fn circle_cast_repeat<'a>(&'a self, pos: Vec2, dir: Vec2, r: f32, options: ShapeCastOptions) -> CastRepeat<'a, 'w, 's> {
+
+    pub fn circle_cast_repeat<'a>(
+        &'a self,
+        pos: Vec2,
+        dir: Vec2,
+        r: f32,
+        options: ShapeCastOptions,
+    ) -> CastRepeat<'a, 'w, 's> {
         self.cast_repeat(pos, dir, r, options, reflect_ray)
     }
 
-    pub fn move_and_slide<'a>(&'a self, pos: Vec2, dir: Vec2, r: f32, options: ShapeCastOptions) -> CastRepeat<'a, 'w, 's> {
+    pub fn move_and_slide<'a>(
+        &'a self,
+        pos: Vec2,
+        dir: Vec2,
+        r: f32,
+        options: ShapeCastOptions,
+    ) -> CastRepeat<'a, 'w, 's> {
         self.cast_repeat(pos, dir, r, options, slide_to_surface)
     }
-    
+
     pub fn contact(&self, pos: Vec2, r: f32) -> Option<(Entity, Contact)> {
-        self.layers.iter()
-            .filter_map(|(e, layer, transform)|
-                layer.contact(transform, pos, r)
-                    .map(|c| (e, c))
-            )
+        self.layers
+            .iter()
+            .filter_map(|(e, layer, transform)| layer.contact(transform, pos, r).map(|c| (e, c)))
             .next()
     }
-    
-    pub fn cast_repeat<'a>(&'a self, pos: Vec2, dir: Vec2, r: f32, options: ShapeCastOptions, dir_update: DirUpdate) -> CastRepeat<'a, 'w, 's> {
+
+    pub fn cast_repeat<'a>(
+        &'a self,
+        pos: Vec2,
+        dir: Vec2,
+        r: f32,
+        options: ShapeCastOptions,
+        dir_update: DirUpdate,
+    ) -> CastRepeat<'a, 'w, 's> {
         CastRepeat {
             collision: self,
             pos,
@@ -203,8 +214,6 @@ impl<'w, 's> Collision<'w, 's> {
             dir_update,
         }
     }
-    
-    
 }
 
 pub fn reflect_ray(dir: Vec2, normal: Vec2) -> Result<Vec2, CastRepeatEnd> {
@@ -214,15 +223,13 @@ pub fn reflect_ray(dir: Vec2, normal: Vec2) -> Result<Vec2, CastRepeatEnd> {
 
 pub fn slide_to_surface(dir: Vec2, normal: Vec2) -> Result<Vec2, CastRepeatEnd> {
     let dir_n = dir.normalize_or_zero();
-    // 1 degree of leeway to detect if it is a 90 degree angle
+    // 1 degree of leeway to detect if it is a 90-degree angle
     const DEGREE_CUTOFF: f32 = 0.0001523048436;
     if dir_n.dot(normal).abs() < DEGREE_CUTOFF {
         Err(CastRepeatEnd::NinetyDegree)
-    } else {        
+    } else {
         let out_dir = (dir_n - Vec2::dot(dir_n, normal) * normal).normalize_or_zero();
-        
-        // println!("{:?} + {:?} -> {:?}", dir, normal, out_dir * dir.length());
-        
+
         Ok(out_dir * dir.length())
     }
 }
@@ -260,7 +267,10 @@ impl<'a, 'w, 's> CastRepeat<'a, 'w, 's> {
 
         // Use slightly smaller radius so we can fit in tight gaps,
         // and avoid running into the same piece of collision twice
-        let Some((_, next)) = self.collision.circle_cast(self.pos, self.r * 0.95, self.dir, self.options) else {
+        let Some((_, next)) =
+            self.collision
+                .circle_cast(self.pos, self.r * 0.95, self.dir, self.options)
+        else {
             self.pos += self.dir * self.options.max_time_of_impact;
             self.options.max_time_of_impact = 0.0;
 
@@ -278,7 +288,7 @@ impl<'a, 'w, 's> CastRepeat<'a, 'w, 's> {
         if let Some((_, contact)) = self.collision.contact(next_pos, self.r) {
             next_pos += contact.dist * Vec2::new(contact.normal1.x, contact.normal1.y);
         }
-        
+
         // not sure if this is doing anything
         if next_pos.distance_squared(self.pos) < 0.01 {
             return Err(CastRepeatEnd::NinetyDegree);
@@ -308,4 +318,3 @@ impl<'a, 'w, 's> Debug for CastRepeat<'a, 'w, 's> {
             .finish()
     }
 }
-

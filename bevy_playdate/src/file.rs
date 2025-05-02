@@ -1,4 +1,4 @@
-﻿#![allow(dead_code)]
+#![allow(dead_code)]
 
 use alloc::ffi::CString;
 use core::ffi::c_int;
@@ -6,8 +6,8 @@ use core::ffi::c_void;
 
 use no_std_io2::io;
 use no_std_io2::io::{Read, Seek, SeekFrom, Write};
-use playdate::{println, sys as playdate_sys};
 use playdate::sys::ffi::{FileOptions, SDFile};
+use playdate::{println, sys as playdate_sys};
 
 pub struct FileHandle {
     handle: *mut SDFile,
@@ -155,7 +155,7 @@ impl<W: Write> BufferedWriter<W, 1024> {
     }
 }
 
-impl<W: Write, const N: usize> BufferedWriter<W, N> {    
+impl<W: Write, const N: usize> BufferedWriter<W, N> {
     pub fn new(inner: W) -> Self {
         Self {
             inner,

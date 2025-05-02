@@ -2,16 +2,16 @@
 #![no_std]
 
 pub mod angle;
+pub mod asset;
 pub mod debug;
 pub mod event;
+pub mod file;
 pub mod input;
 pub mod jobs;
 pub mod sprite;
 pub mod time;
-pub mod view;
-pub mod file;
-pub mod asset;
 pub mod transform;
+pub mod view;
 
 pub use bevy_playdate_macros::init_app;
 

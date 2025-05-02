@@ -1,11 +1,11 @@
-﻿use alloc::string::String;
-use alloc::vec::Vec;
-use core::num::NonZeroU8;
-use rkyv::{Archive, Deserialize, Portable, Serialize};
-use bytecheck::CheckBytes;
-use hashbrown::HashSet;
 use crate::dependencies::{AddDependencies, AddDependenciesMut};
 use crate::properties::Properties;
+use alloc::string::String;
+use alloc::vec::Vec;
+use bytecheck::CheckBytes;
+use core::num::NonZeroU8;
+use hashbrown::HashSet;
+use rkyv::{Archive, Deserialize, Portable, Serialize};
 
 #[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
 #[rkyv(derive(Debug))]
@@ -142,20 +142,10 @@ impl AddDependenciesMut for ObjectData {
 #[rkyv(derive(Debug))]
 pub enum ObjectShape {
     Tile(Tile),
-    Rect {
-        width: f32,
-        height: f32,
-    },
-    Ellipse {
-        width: f32,
-        height: f32,
-    },
-    Polyline {
-        points: Vec<(f32, f32)>,
-    },
-    Polygon {
-        points: Vec<(f32, f32)>,
-    },
+    Rect { width: f32, height: f32 },
+    Ellipse { width: f32, height: f32 },
+    Polyline { points: Vec<(f32, f32)> },
+    Polygon { points: Vec<(f32, f32)> },
     Point(f32, f32),
 }
 
@@ -190,7 +180,7 @@ pub struct TileLayer {
     pub tiles: Vec<Option<Tile>>,
     /// Optional, pre-baked image for layer.
     /// If `Some`, it will use the image as a single sprite on the Layer entity.
-    /// If `None`, it will create a sprite on each tile entity. 
+    /// If `None`, it will create a sprite on each tile entity.
     pub image: Option<String>,
     pub layer_collision: LayerCollision,
 }
@@ -248,7 +238,7 @@ pub struct Tile {
 
 impl Tile {
     pub const NONE: Option<Self> = unsafe { core::mem::transmute(0i16) };
-    
+
     pub fn new(tile_id: u8, flip_x: bool, flip_y: bool, flip_d: bool, tilemap_idx: u8) -> Self {
         assert!(tilemap_idx < 16, "tilemap index must be in 0..16");
 
@@ -362,12 +352,12 @@ impl core::fmt::Debug for Tile {
 #[cfg(test)]
 mod test {
     use crate::tilemap::Tile;
-    
+
     #[test]
     pub fn option_tile_same_size() {
         assert_eq!(size_of::<Tile>(), size_of::<Option<Tile>>());
     }
-    
+
     #[test]
     pub fn tile_is_16_bits() {
         assert_eq!(size_of::<Tile>(), 2);

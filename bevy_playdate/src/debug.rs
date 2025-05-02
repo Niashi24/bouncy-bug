@@ -1,37 +1,37 @@
+use crate::input::PlaydateButton;
+use crate::jobs::Jobs;
+use crate::sprite::Sprite;
+use crate::time::RunningTimer;
 use alloc::collections::VecDeque;
-use core::time::Duration;
 use bevy_app::{App, Last, Plugin, PostUpdate};
 use bevy_ecs::prelude::{IntoScheduleConfigs, Resource};
 use bevy_ecs::system::{Query, Res, ResMut};
 use bevy_input::ButtonInput;
 use bevy_math::IVec2;
-use playdate::{api, println};
+use core::time::Duration;
 use playdate::graphics::bitmap::LCDColorConst;
-use playdate::graphics::{draw_line, fill_rect, Graphics};
 use playdate::graphics::text::draw_text;
+use playdate::graphics::{Graphics, draw_line, fill_rect};
 use playdate::sprite::draw_sprites;
 use playdate::sys::ffi::LCDColor;
 use playdate::system::System;
-use crate::input::PlaydateButton;
-use crate::jobs::Jobs;
-use crate::sprite::Sprite;
-use crate::time::RunningTimer;
+use playdate::{api, println};
 
 pub struct DebugPlugin;
 
 impl Plugin for DebugPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<Debug>()
-            .add_systems(
-                PostUpdate,
-                (
-                    toggle_debug_system,
-                    draw_fps_top_left.after(draw_sprites),
-                    // (debug_sprite)
-                    //     .after(draw_sprites)
-                    //     .run_if(in_debug),
-                ).chain(),
-            );
+        app.init_resource::<Debug>().add_systems(
+            PostUpdate,
+            (
+                toggle_debug_system,
+                draw_fps_top_left.after(draw_sprites),
+                // (debug_sprite)
+                //     .after(draw_sprites)
+                //     .run_if(in_debug),
+            )
+                .chain(),
+        );
         app.add_plugins(FpsLinesPlugin);
     }
 }
@@ -45,7 +45,13 @@ fn debug_sprite(sprite: Query<&Sprite>) {
     for spr in sprite.iter() {
         // let (x, y) = spr.position();
         let rect = spr.bounds();
-        graphics.draw_rect(rect.x as i32, rect.y as i32, rect.width as i32, rect.height as i32, LCDColor::XOR);
+        graphics.draw_rect(
+            rect.x as i32,
+            rect.y as i32,
+            rect.width as i32,
+            rect.height as i32,
+            LCDColor::XOR,
+        );
     }
 }
 
@@ -173,14 +179,15 @@ pub struct FpsLinesPlugin;
 
 impl Plugin for FpsLinesPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .init_resource::<FpsLines>()
-            .add_systems(
-                Last, 
-                (FpsLines::push_frame_system, FpsLines::draw_system.run_if(in_debug))
-                    .chain()
-                    .after(Jobs::run_jobs_system)
-            );
+        app.init_resource::<FpsLines>().add_systems(
+            Last,
+            (
+                FpsLines::push_frame_system,
+                FpsLines::draw_system.run_if(in_debug),
+            )
+                .chain()
+                .after(Jobs::run_jobs_system),
+        );
     }
 }
 
@@ -206,33 +213,40 @@ impl FpsLines {
         if self.frames.len() >= self.max_frames {
             self.frames.pop_front();
         }
-        
+
         if delta > Duration::from_millis(20) {
-            println!("spike: {:.2}ms ({:.1} frame(s) lost)", delta.as_secs_f32() * 1000.0, delta.as_secs_f32() / 0.02);
+            println!(
+                "spike: {:.2}ms ({:.1} frame(s) lost)",
+                delta.as_secs_f32() * 1000.0,
+                delta.as_secs_f32() / 0.02
+            );
         }
-        
+
         self.frames.push_back(delta);
     }
-    
+
     pub fn draw(&self, bottom_right: IVec2) {
         let mut x = bottom_right.x;
         for frame in &self.frames {
             let height = (frame.as_secs_f32() * self.display_scale) as i32;
-            draw_line(x, bottom_right.y, x, bottom_right.y - height, 1, LCDColor::BLACK);
-            
+            draw_line(
+                x,
+                bottom_right.y,
+                x,
+                bottom_right.y - height,
+                1,
+                LCDColor::BLACK,
+            );
+
             x -= 1;
         }
     }
-    
+
     pub fn push_frame_system(mut fps: ResMut<Self>, timer: Res<RunningTimer>) {
         fps.push(timer.time_in_frame());
     }
-    
+
     pub fn draw_system(fps: Res<Self>) {
         fps.draw(IVec2::new(399, 239));
     }
 }
-
-
-
-

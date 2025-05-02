@@ -1,11 +1,11 @@
-﻿use alloc::string::String;
+use crate::dependencies::{AddDependencies, AddDependenciesMut};
+use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt::Debug;
 use hashbrown::{HashMap, HashSet};
-use rkyv::{Archive, Deserialize, Serialize};
 use rkyv::collections::swiss_table::ArchivedHashMap;
 use rkyv::string::ArchivedString;
-use crate::dependencies::{AddDependencies, AddDependenciesMut};
+use rkyv::{Archive, Deserialize, Serialize};
 
 /// Represents a custom property's value.
 ///
@@ -46,8 +46,12 @@ pub enum PropertyValue {
 impl AddDependencies for ArchivedPropertyValue {
     fn add_dependencies<'a: 'b, 'b>(&'a self, dependencies: &mut HashSet<&'b str>) {
         match self {
-            ArchivedPropertyValue::FileValue(file) => { dependencies.insert(file); },
-            ArchivedPropertyValue::ClassValue { properties, .. } => properties.add_dependencies(dependencies),
+            ArchivedPropertyValue::FileValue(file) => {
+                dependencies.insert(file);
+            }
+            ArchivedPropertyValue::ClassValue { properties, .. } => {
+                properties.add_dependencies(dependencies)
+            }
             _ => {}
         }
     }
@@ -56,9 +60,9 @@ impl AddDependencies for ArchivedPropertyValue {
 impl AddDependenciesMut for PropertyValue {
     fn add_dependencies_mut<'a: 'b, 'b>(&'a mut self, dependencies: &mut Vec<&'b mut String>) {
         match self {
-            Self::FileValue(file) => { dependencies.push(file) }
+            Self::FileValue(file) => dependencies.push(file),
             Self::ClassValue { properties, .. } => properties.add_dependencies_mut(dependencies),
-            _ => {},
+            _ => {}
         }
     }
 }
@@ -85,9 +89,9 @@ pub type ArchivedProperties = ArchivedHashMap<ArchivedString, ArchivedPropertyVa
 
 #[cfg(test)]
 mod test {
+    use crate::properties::{ArchivedPropertyValue, PropertyValue};
     use rkyv::access;
     use rkyv::rancor::Error;
-    use crate::properties::{ArchivedPropertyValue, PropertyValue};
 
     #[test]
     pub fn test_serialize() {

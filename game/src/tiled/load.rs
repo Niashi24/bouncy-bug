@@ -1,4 +1,4 @@
-﻿use alloc::borrow::ToOwned;
+use alloc::borrow::ToOwned;
 use alloc::boxed::Box;
 use alloc::format;
 use alloc::string::{String, ToString};
@@ -6,8 +6,12 @@ use alloc::vec::Vec;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::ReflectComponent;
 use bevy_ecs::reflect::{ReflectBundle, ReflectResource};
-use bevy_reflect::{DynamicArray, DynamicEnum, DynamicStruct, DynamicTuple, DynamicTupleStruct, DynamicVariant, FromReflect, NamedField, PartialReflect, Reflect, ReflectMut, ReflectRef, TypeInfo, TypeRegistration, TypeRegistry, UnnamedField, VariantInfo, VariantType};
 use bevy_reflect::prelude::ReflectDefault;
+use bevy_reflect::{
+    DynamicArray, DynamicEnum, DynamicStruct, DynamicTuple, DynamicTupleStruct, DynamicVariant,
+    FromReflect, NamedField, PartialReflect, Reflect, ReflectMut, ReflectRef, TypeInfo,
+    TypeRegistration, TypeRegistry, UnnamedField, VariantInfo, VariantType,
+};
 use hashbrown::HashMap;
 use tiledpd::properties::{ArchivedProperties, ArchivedPropertyValue};
 use tiledpd::tilemap::{ArchivedLayerData, ArchivedTilemap};
@@ -45,19 +49,14 @@ impl DeserializedMapProperties<false> {
                     for object in object.objects.iter() {
                         objects.insert(
                             object.id.to_native(),
-                            DeserializedProperties::load(
-                                &object.properties,
-                                registry,
-                                (),
-                                false,
-                            ),
+                            DeserializedProperties::load(&object.properties, registry, (), false),
                         );
                     }
                 }
                 // ArchivedLayerData::Group(group) => {
                 //     to_process.extend(group.layers());
                 // }
-                ArchivedLayerData::TileLayer(_) | ArchivedLayerData::ImageLayer(_) => {},
+                ArchivedLayerData::TileLayer(_) | ArchivedLayerData::ImageLayer(_) => {}
             }
         }
 
@@ -145,7 +144,7 @@ impl DeserializedProperties {
                 //     props.push(Box::new(load_cx.loader().with_unknown_type().load(file)));
                 //     continue;
                 // }
-                
+
                 println!("error deserializing property: unknown property `{name}`:`{property:?}`");
                 continue;
             };
@@ -466,9 +465,7 @@ impl DeserializedProperties {
                 }
 
                 if let Some(PV::StringValue(variant_name)) = properties.get(":variant") {
-                    if let Some(PV::ClassValue { properties, .. }) =
-                        properties.get(variant_name)
-                    {
+                    if let Some(PV::ClassValue { properties, .. }) = properties.get(variant_name) {
                         let variant_out = match info.variant(&variant_name) {
                             Some(VariantInfo::Struct(variant_info)) => {
                                 let mut out = DynamicStruct::default();
@@ -650,7 +647,7 @@ fn hydrate(object: &mut dyn PartialReflect, obj_entity_map: &HashMap<u32, Entity
 // #[cfg(test)]
 // mod tests {
 //     use super::*;
-// 
+//
 //     #[test]
 //     fn print_all_properties() {
 //         let map = pdtiled::Loader::new()
@@ -680,7 +677,7 @@ fn hydrate(object: &mut dyn PartialReflect, obj_entity_map: &HashMap<u32, Entity
 //             }
 //         }
 //     }
-// 
+//
 //     #[test]
 //     fn deserialize_simple_enum() {
 //         #[derive(Reflect, PartialEq, Debug)]
@@ -689,13 +686,13 @@ fn hydrate(object: &mut dyn PartialReflect, obj_entity_map: &HashMap<u32, Entity
 //             VarB,
 //             VarC,
 //         }
-// 
+//
 //         let mut registry = TypeRegistry::new();
 //         registry.register::<EnumComponent>();
-// 
+//
 //         let raw_value = EnumComponent::VarB;
 //         let tiled_value = PropertyValue::StringValue("VarB".to_string());
-// 
+//
 //         let res = DeserializedProperties::deserialize_property(
 //             tiled_value,
 //             registry
@@ -707,11 +704,11 @@ fn hydrate(object: &mut dyn PartialReflect, obj_entity_map: &HashMap<u32, Entity
 //         )
 //             .unwrap();
 //         assert!(res.represents::<EnumComponent>());
-// 
+//
 //         let v: Result<EnumComponent, _> = FromReflect::take_from_reflect(res);
 //         assert_eq!(v.unwrap(), raw_value);
 //     }
-// 
+//
 //     #[test]
 //     fn deserialize_nested_struct() {
 //         #[derive(Reflect, Default, PartialEq, Debug)]
@@ -722,7 +719,7 @@ fn hydrate(object: &mut dyn PartialReflect, obj_entity_map: &HashMap<u32, Entity
 //             VarB,
 //             VarC,
 //         }
-// 
+//
 //         #[derive(Reflect, PartialEq, Debug)]
 //         #[reflect(Default)]
 //         struct InnerStruct {
@@ -739,7 +736,7 @@ fn hydrate(object: &mut dyn PartialReflect, obj_entity_map: &HashMap<u32, Entity
 //                 }
 //             }
 //         }
-// 
+//
 //         #[derive(Component, Reflect, Default, PartialEq, Debug)]
 //         #[reflect(Component, Default)]
 //         struct StructComponent {
@@ -748,12 +745,12 @@ fn hydrate(object: &mut dyn PartialReflect, obj_entity_map: &HashMap<u32, Entity
 //             a_struct: InnerStruct,
 //             an_integer: i32,
 //         }
-// 
+//
 //         let mut registry = TypeRegistry::new();
 //         registry.register::<TestEnum>();
 //         registry.register::<InnerStruct>();
 //         registry.register::<StructComponent>();
-// 
+//
 //         let raw_value = StructComponent::default();
 //         let tiled_value = PropertyValue::ClassValue {
 //             property_type: StructComponent::type_path().to_string(),
@@ -780,7 +777,7 @@ fn hydrate(object: &mut dyn PartialReflect, obj_entity_map: &HashMap<u32, Entity
 //                 ("an_integer".to_string(), PropertyValue::IntValue(0)),
 //             ]),
 //         };
-// 
+//
 //         let res = DeserializedProperties::deserialize_property(
 //             tiled_value,
 //             registry
@@ -792,7 +789,7 @@ fn hydrate(object: &mut dyn PartialReflect, obj_entity_map: &HashMap<u32, Entity
 //         )
 //             .unwrap();
 //         assert!(res.represents::<StructComponent>());
-// 
+//
 //         let v: Result<StructComponent, _> = FromReflect::take_from_reflect(res);
 //         assert_eq!(v.unwrap(), raw_value);
 //     }

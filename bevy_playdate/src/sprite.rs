@@ -1,22 +1,22 @@
-use crate::transform::Transform;
-use bevy_ecs::schedule::IntoScheduleConfigs;
 use crate::angle::PDAngle;
-use bevy_platform::sync::Arc;
+use crate::asset::{BitmapAsset, BitmapRef};
+use crate::transform::Transform;
 use alloc::vec::Vec;
 use bevy_app::{App, Plugin, PostUpdate};
 use bevy_ecs::component::{Component, HookContext};
+use bevy_ecs::schedule::IntoScheduleConfigs;
 use bevy_ecs::schedule::ScheduleLabel;
 use bevy_ecs::world::{DeferredWorld, World};
+use bevy_platform::sync::Arc;
 use derive_more::Deref;
 use playdate::api;
 use playdate::graphics::api::Cache;
 use playdate::graphics::bitmap::Bitmap;
 use playdate::graphics::color::Color;
 use playdate::graphics::{BitmapFlip, BitmapFlipExt, Graphics};
-use playdate::sprite::{draw_sprites, Sprite as PDSprite};
+use playdate::sprite::{Sprite as PDSprite, draw_sprites};
 use playdate::sys::ffi::LCDBitmapFlip;
 use playdate::sys::traits::AsRaw;
-use crate::asset::{BitmapAsset, BitmapRef};
 
 pub struct SpritePlugin;
 
@@ -63,7 +63,9 @@ unsafe impl Send for Sprite {}
 unsafe impl Sync for Sprite {}
 
 pub fn empty_bitmap() -> Arc<BitmapAsset> {
-    Arc::new(BitmapAsset(Bitmap::new(10, 10, Color::CLEAR).expect("create default empty bitmap")))
+    Arc::new(BitmapAsset(
+        Bitmap::new(10, 10, Color::CLEAR).expect("create default empty bitmap"),
+    ))
 }
 
 impl Sprite {
@@ -176,7 +178,7 @@ impl SpriteRotation {
     //                 .unwrap_or(&sprite.bitmap)
     //                 .rotated_clone(angle, 1.0, 1.0)
     //                 .expect("rotate SpriteRotation::Redraw bitmap");
-    // 
+    //
     //             Arc::new(rotated)
     //         }
     //         SpriteRotation::Cached(directions, ..) => {

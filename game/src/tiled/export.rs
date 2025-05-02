@@ -1,13 +1,18 @@
-﻿use alloc::string::{String, ToString};
-use alloc::{format, vec};
+use crate::tiled::types_json::{
+    Class, Enum, FieldType, Member, StorageType, TypeData, TypeExport, UseAs,
+};
 use alloc::borrow::Cow;
+use alloc::string::{String, ToString};
 use alloc::vec::Vec;
+use alloc::{format, vec};
 use bevy_ecs::reflect::{ReflectBundle, ReflectComponent, ReflectResource};
-use bevy_reflect::{ArrayInfo, EnumInfo, NamedField, PartialReflect, Reflect, ReflectRef, StructInfo, TupleInfo, TupleStructInfo, TypeInfo, TypeRegistration, TypeRegistry, UnnamedField, VariantInfo};
 use bevy_reflect::std_traits::ReflectDefault;
+use bevy_reflect::{
+    ArrayInfo, EnumInfo, NamedField, PartialReflect, Reflect, ReflectRef, StructInfo, TupleInfo,
+    TupleStructInfo, TypeInfo, TypeRegistration, TypeRegistry, UnnamedField, VariantInfo,
+};
 use derive_more::{Display, Error};
 use hashbrown::HashMap;
-use crate::tiled::types_json::{Class, Enum, FieldType, Member, StorageType, TypeData, TypeExport, UseAs};
 
 const DEFAULT_COLOR: &str = "#000000";
 const USE_AS_PROPERTY: &[UseAs] = &[UseAs::Property];
@@ -684,9 +689,9 @@ fn dependencies(registration: &TypeRegistration, registry: &TypeRegistry) -> Vec
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use bevy_ecs::prelude::*;
     use bevy_reflect::TypePath;
-    use super::*;
 
     #[test]
     fn generate_with_entity() {

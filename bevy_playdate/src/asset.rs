@@ -1,21 +1,21 @@
-﻿use crate::jobs::{AsyncLoadCtx, GenJobExtensions};
+use crate::jobs::{AsyncLoadCtx, GenJobExtensions};
 use alloc::borrow::Cow;
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use bevy_app::{App, Plugin};
 use bevy_ecs::prelude::Resource;
 use bevy_platform::sync::{Arc, LazyLock, RwLock, Weak};
-use derive_more::derive::{From, Index};
 use core::any::{Any, TypeId};
 use core::ops::Index;
 use derive_more::Deref;
+use derive_more::derive::{From, Index};
+use diagnostic::dbg;
 use hashbrown::HashMap;
 use playdate::graphics::api;
 use playdate::graphics::bitmap::Bitmap;
 use playdate::graphics::bitmap::table::BitmapTable;
 use playdate::graphics::error::ApiError;
 use playdate::println;
-use diagnostic::dbg;
 
 pub struct AssetPlugin;
 
@@ -48,23 +48,29 @@ pub static ASSET_CACHE: LazyLock<RwLock<AssetCache>> = LazyLock::new(|| RwLock::
 impl AssetCache {
     /// Insert an asset of the given type into the given path, overwriting any asset currently there.
     #[must_use]
-    pub fn insert<A: Any + Send + Sync>(&mut self, path: impl Into<Cow<'static, str>>, asset: A) -> Arc<A> {
+    pub fn insert<A: Any + Send + Sync>(
+        &mut self,
+        path: impl Into<Cow<'static, str>>,
+        asset: A,
+    ) -> Arc<A> {
         let path = path.into();
         let asset: Box<dyn Any + Send + Sync> = Box::new(asset);
         let asset = Arc::from(asset);
-        self.cache.insert((path, TypeId::of::<A>()), Arc::downgrade(&asset));
+        self.cache
+            .insert((path, TypeId::of::<A>()), Arc::downgrade(&asset));
 
         asset.downcast::<A>().unwrap()
     }
-    
+
     /// Gets the asset of the given type if it exists. Panics if the asset at that location is not
     /// the correct type.
-    pub fn get<A: Any + Send + Sync>(&self, path: &str) -> Option<Arc<A>> { 
-        self.cache.get(&(Cow::from(path), TypeId::of::<A>()))
+    pub fn get<A: Any + Send + Sync>(&self, path: &str) -> Option<Arc<A>> {
+        self.cache
+            .get(&(Cow::from(path), TypeId::of::<A>()))
             .and_then(Weak::upgrade)
             .map(|x| x.downcast::<A>().unwrap())
     }
-    
+
     pub fn debug_loaded(&self) {
         println!("asset cache contains:");
         for ((name, _), item) in &self.cache {
@@ -75,7 +81,7 @@ impl AssetCache {
             }
         }
     }
-    
+
     /// Clears any entries in the cache to unloaded assets.
     pub fn clear_unused(&mut self) {
         self.cache.retain(|_, v| v.strong_count() > 0);
@@ -85,7 +91,10 @@ impl AssetCache {
 pub trait AssetAsync: Sized + Send + Sync + Any {
     type Error: Any + Send + Sync;
 
-    fn load(load_cx: &mut AsyncLoadCtx, path: &str) -> impl Future<Output = Result<Self, Self::Error>> + Send + Sync;
+    fn load(
+        load_cx: &mut AsyncLoadCtx,
+        path: &str,
+    ) -> impl Future<Output = Result<Self, Self::Error>> + Send + Sync;
 }
 
 #[derive(Deref, Clone)]
@@ -123,7 +132,7 @@ impl BitmapTableAsset {
         let mut len = 0;
 
         table.info::<api::Default>(Some(&mut len), None);
-        
+
         // dbg!(len);
 
         let mut bitmaps = Vec::with_capacity(len as usize);
@@ -142,7 +151,7 @@ impl BitmapTableAsset {
     pub fn get(&self, i: usize) -> Option<&BitmapAsset> {
         self.bitmaps.get(i)
     }
-    
+
     pub fn len(&self) -> usize {
         self.bitmaps.len()
     }
@@ -157,7 +166,7 @@ impl AssetAsync for BitmapTableAsset {
         // if loading the table or creating the bitmaps take too long in benchmarks,
         // we can wrap table in an intermediary step.
         // _load_cx.yield_next().await;
-        
+
         Ok(BitmapTableAsset::from_table(table))
     }
 }
@@ -195,6 +204,3 @@ impl AsRef<BitmapAsset> for BitmapRef {
 // SAFETY: playdate is single threaded
 unsafe impl Send for BitmapTableAsset {}
 unsafe impl Sync for BitmapTableAsset {}
-
-
-

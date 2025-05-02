@@ -1,10 +1,10 @@
 #![no_std]
 extern crate alloc;
 
-pub mod tileset;
-pub mod tilemap;
-pub mod properties;
 pub mod dependencies;
+pub mod properties;
+pub mod tilemap;
+pub mod tileset;
 pub use dependencies::AddDependencies;
 
 pub use rkyv;

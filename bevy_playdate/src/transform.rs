@@ -1,4 +1,4 @@
-﻿use alloc::vec::Vec;
+use alloc::vec::Vec;
 use bevy_app::{App, Plugin, PostStartup, PostUpdate};
 use bevy_ecs::prelude::*;
 use bevy_math::Vec2;
@@ -16,8 +16,7 @@ pub enum TransformSystem {
 
 impl Plugin for TransformPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .register_type::<Transform>()
+        app.register_type::<Transform>()
             .register_type::<GlobalTransform>()
             .register_type::<TransformTreeChanged>();
         app
@@ -49,7 +48,9 @@ impl Plugin for TransformPlugin {
 // note: much of this is copied from the `bevy_transform` source code and modified
 // so that we only use a 2d position value
 
-#[derive(Copy, Clone, PartialEq, Debug, Default, Deref, DerefMut, Component, Reflect, Add, AddAssign)]
+#[derive(
+    Copy, Clone, PartialEq, Debug, Default, Deref, DerefMut, Component, Reflect, Add, AddAssign,
+)]
 #[reflect(Component)]
 #[require(GlobalTransform, TransformTreeChanged)]
 pub struct Transform(pub Vec2);
@@ -61,7 +62,9 @@ impl Transform {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Debug, Default, Deref, DerefMut, Component, Reflect, Add, AddAssign)]
+#[derive(
+    Copy, Clone, PartialEq, Debug, Default, Deref, DerefMut, Component, Reflect, Add, AddAssign,
+)]
 #[reflect(Component)]
 pub struct GlobalTransform(pub Vec2);
 
@@ -99,7 +102,7 @@ pub fn sync_simple_transforms(
     // Update changed entities.
     query
         .p0()
-        .into_iter() // note: this was changed in 
+        .into_iter() // note: this was changed in
         .for_each(|(transform, mut global_transform)| {
             *global_transform = GlobalTransform::from(*transform);
         });
@@ -112,7 +115,6 @@ pub fn sync_simple_transforms(
         }
     }
 }
-
 
 /// Optimization for static scenes. Propagates a "dirty bit" up the hierarchy towards ancestors.
 /// Transform propagation can ignore entire subtrees of the hierarchy if it encounters an entity
@@ -144,22 +146,22 @@ pub fn mark_dirty_trees(
 }
 
 pub fn propagate_parent_transforms(
-        mut root_query: Query<
-            (Entity, &Children, Ref<Transform>, &mut GlobalTransform),
-            Without<ChildOf>,
-        >,
-        mut orphaned: RemovedComponents<ChildOf>,
-        transform_query: Query<
-            (Ref<Transform>, &mut GlobalTransform, Option<&Children>),
-            With<ChildOf>,
-        >,
-        child_query: Query<(Entity, Ref<ChildOf>), With<GlobalTransform>>,
-        mut orphaned_entities: Local<Vec<Entity>>,
-    ) {
-        orphaned_entities.clear();
-        orphaned_entities.extend(orphaned.read());
-        orphaned_entities.sort_unstable();
-        root_query.par_iter_mut().for_each(
+    mut root_query: Query<
+        (Entity, &Children, Ref<Transform>, &mut GlobalTransform),
+        Without<ChildOf>,
+    >,
+    mut orphaned: RemovedComponents<ChildOf>,
+    transform_query: Query<
+        (Ref<Transform>, &mut GlobalTransform, Option<&Children>),
+        With<ChildOf>,
+    >,
+    child_query: Query<(Entity, Ref<ChildOf>), With<GlobalTransform>>,
+    mut orphaned_entities: Local<Vec<Entity>>,
+) {
+    orphaned_entities.clear();
+    orphaned_entities.extend(orphaned.read());
+    orphaned_entities.sort_unstable();
+    root_query.par_iter_mut().for_each(
         |(entity, children, transform, mut global_transform)| {
             let changed = transform.is_changed() || global_transform.is_added() || orphaned_entities.binary_search(&entity).is_ok();
             if changed {
@@ -196,37 +198,37 @@ pub fn propagate_parent_transforms(
             }
         },
     );
-    }
+}
 
-    /// Recursively propagates the transforms for `entity` and all of its descendants.
-    ///
-    /// # Panics
-    ///
-    /// If `entity`'s descendants have a malformed hierarchy, this function will panic occur before
-    /// propagating the transforms of any malformed entities and their descendants.
-    ///
-    /// # Safety
-    ///
-    /// - While this function is running, `transform_query` must not have any fetches for `entity`,
-    ///   nor any of its descendants.
-    /// - The caller must ensure that the hierarchy leading to `entity` is well-formed and must
-    ///   remain as a tree or a forest. Each entity must have at most one parent.
-    #[expect(
-        unsafe_code,
-        reason = "This function uses `Query::get_unchecked()`, which can result in multiple mutable references if the preconditions are not met."
-    )]
-    unsafe fn propagate_recursive(
-        parent: &GlobalTransform,
-        transform_query: &Query<
-            (Ref<Transform>, &mut GlobalTransform, Option<&Children>),
-            With<ChildOf>,
-        >,
-        child_query: &Query<(Entity, Ref<ChildOf>), With<GlobalTransform>>,
-        entity: Entity,
-        mut changed: bool,
-    ) {
-        let (global_matrix, children) = {
-            let Ok((transform, mut global_transform, children)) =
+/// Recursively propagates the transforms for `entity` and all of its descendants.
+///
+/// # Panics
+///
+/// If `entity`'s descendants have a malformed hierarchy, this function will panic occur before
+/// propagating the transforms of any malformed entities and their descendants.
+///
+/// # Safety
+///
+/// - While this function is running, `transform_query` must not have any fetches for `entity`,
+///   nor any of its descendants.
+/// - The caller must ensure that the hierarchy leading to `entity` is well-formed and must
+///   remain as a tree or a forest. Each entity must have at most one parent.
+#[expect(
+    unsafe_code,
+    reason = "This function uses `Query::get_unchecked()`, which can result in multiple mutable references if the preconditions are not met."
+)]
+unsafe fn propagate_recursive(
+    parent: &GlobalTransform,
+    transform_query: &Query<
+        (Ref<Transform>, &mut GlobalTransform, Option<&Children>),
+        With<ChildOf>,
+    >,
+    child_query: &Query<(Entity, Ref<ChildOf>), With<GlobalTransform>>,
+    entity: Entity,
+    mut changed: bool,
+) {
+    let (global_matrix, children) = {
+        let Ok((transform, mut global_transform, children)) =
             // SAFETY: This call cannot create aliased mutable references.
             //   - The top level iteration parallelizes on the roots of the hierarchy.
             //   - The caller ensures that each child has one and only one unique parent throughout
@@ -258,32 +260,33 @@ pub fn propagate_parent_transforms(
                 return;
             };
 
-            changed |= transform.is_changed() || global_transform.is_added();
-            if changed {
-                *global_transform = *parent + GlobalTransform::from(*transform);
-            }
-            (global_transform, children)
-        };
+        changed |= transform.is_changed() || global_transform.is_added();
+        if changed {
+            *global_transform = *parent + GlobalTransform::from(*transform);
+        }
+        (global_transform, children)
+    };
 
-        let Some(children) = children else { return };
-        for (child, child_of) in child_query.iter_many(children) {
-            assert_eq!(
-            child_of.parent(), entity,
+    let Some(children) = children else { return };
+    for (child, child_of) in child_query.iter_many(children) {
+        assert_eq!(
+            child_of.parent(),
+            entity,
             "Malformed hierarchy. This probably means that your hierarchy has been improperly maintained, or contains a cycle"
         );
-            // SAFETY: The caller guarantees that `transform_query` will not be fetched for any
-            // descendants of `entity`, so it is safe to call `propagate_recursive` for each child.
-            //
-            // The above assertion ensures that each child has one and only one unique parent
-            // throughout the entire hierarchy.
-            unsafe {
-                propagate_recursive(
-                    global_matrix.as_ref(),
-                    transform_query,
-                    child_query,
-                    child,
-                    changed || child_of.is_changed(),
-                );
-            }
+        // SAFETY: The caller guarantees that `transform_query` will not be fetched for any
+        // descendants of `entity`, so it is safe to call `propagate_recursive` for each child.
+        //
+        // The above assertion ensures that each child has one and only one unique parent
+        // throughout the entire hierarchy.
+        unsafe {
+            propagate_recursive(
+                global_matrix.as_ref(),
+                transform_query,
+                child_query,
+                child,
+                changed || child_of.is_changed(),
+            );
         }
     }
+}
