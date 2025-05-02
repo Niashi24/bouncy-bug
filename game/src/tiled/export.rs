@@ -159,7 +159,7 @@ impl TypeExportRegistry {
                 out
             } else {
                 Err(ExportConversionError::DependencyError)
-            }
+            };
         }
         out
     }

@@ -11,8 +11,8 @@ use playdate::graphics::bitmap::LCDColorConst;
 use playdate::graphics::fill_rect;
 use playdate::graphics::text::draw_text;
 use playdate::sys::ffi::LCDColor;
-use playdate::system::api::Cache;
 use playdate::system::System;
+use playdate::system::api::Cache;
 
 /// Whatever you do, do NOT call reset_elapsed_time.
 /// Use the utilities from [`bevy_time`], such as [`bevy_time::Timer`]
@@ -26,7 +26,10 @@ impl Plugin for PDTimePlugin {
         app.add_plugins(TimePlugin);
         app.init_resource::<RunningTimer>()
             .add_systems(First, RunningTimer::update_system);
-        app.add_systems(PostUpdate, debug_time.run_if(in_debug).after(SpriteSystemSet));
+        app.add_systems(
+            PostUpdate,
+            debug_time.run_if(in_debug).after(SpriteSystemSet),
+        );
     }
 }
 

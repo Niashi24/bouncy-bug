@@ -11,7 +11,7 @@ use std::process::Command;
 use std::str::FromStr;
 use std::sync::LazyLock;
 use tiledpd::dependencies::AddDependenciesMut;
-use toml_edit::{value, Item, Table};
+use toml_edit::{Item, Table, value};
 
 fn main() -> anyhow::Result<()> {
     let game_toml = std::fs::read_to_string("game/Cargo.toml")?;

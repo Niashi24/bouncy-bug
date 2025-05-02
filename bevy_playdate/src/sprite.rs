@@ -12,7 +12,7 @@ use playdate::graphics::api::Cache;
 use playdate::graphics::bitmap::Bitmap;
 use playdate::graphics::color::Color;
 use playdate::graphics::{BitmapFlip, BitmapFlipExt, Graphics};
-use playdate::sprite::{draw_sprites, Sprite as PDSprite};
+use playdate::sprite::{Sprite as PDSprite, draw_sprites};
 use playdate::sys::traits::AsRaw;
 
 pub struct SpritePlugin;

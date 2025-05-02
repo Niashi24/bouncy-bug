@@ -7,12 +7,12 @@ use bevy_ecs::prelude::Resource;
 use bevy_platform::sync::{Arc, LazyLock, RwLock, Weak};
 use core::any::{Any, TypeId};
 use core::ops::Index;
-use derive_more::derive::From;
 use derive_more::Deref;
+use derive_more::derive::From;
 use hashbrown::HashMap;
 use playdate::graphics::api;
-use playdate::graphics::bitmap::table::BitmapTable;
 use playdate::graphics::bitmap::Bitmap;
+use playdate::graphics::bitmap::table::BitmapTable;
 use playdate::graphics::error::ApiError;
 use playdate::println;
 
@@ -154,7 +154,7 @@ impl BitmapTableAsset {
     pub fn len(&self) -> usize {
         self.bitmaps.len()
     }
-    
+
     pub fn is_empty(&self) -> bool {
         self.bitmaps.is_empty()
     }

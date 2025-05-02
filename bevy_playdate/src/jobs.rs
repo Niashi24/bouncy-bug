@@ -361,8 +361,8 @@ impl<TWork: Any, TSuccess: Any, TError: Any> From<WorkResult<TWork, TSuccess, TE
 }
 use crate::asset::{AssetAsync, ResAssetCache};
 use crate::file::FileHandle;
-use genawaiter::sync::{Co, Gen};
 use genawaiter::GeneratorState;
+use genawaiter::sync::{Co, Gen};
 use no_std_io2::io::{Error, Read};
 
 fn new_gen_job_simple<S: Any, E: Any>(

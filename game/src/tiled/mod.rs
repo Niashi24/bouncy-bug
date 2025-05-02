@@ -1,3 +1,5 @@
+use crate::rkyv::{load_compressed_archive, OwnedArchived};
+use crate::tiled::load::{DeserializedMapProperties, DeserializedProperties};
 use alloc::borrow::Cow;
 use alloc::vec::Vec;
 use bevy_app::{App, Last, Plugin, Startup};
@@ -6,24 +8,20 @@ use bevy_ecs::entity::Entity;
 use bevy_ecs::event::EventReader;
 use bevy_ecs::prelude::{Commands, Component, EntityCommands, IntoScheduleConfigs, Query};
 use bevy_ecs::reflect::AppTypeRegistry;
-use bevy_ecs::system::{Res};
-use bevy_ecs::world::{EntityWorldMut};
+use bevy_ecs::system::Res;
+use bevy_ecs::world::EntityWorldMut;
 use bevy_platform::sync::Arc;
-use bevy_reflect::{Reflect};
-use core::ops::Deref;
-use derive_more::Deref;
-use no_std_io2::io::Write;
-use pd::sys::ffi::LCDBitmapFlip;
-use crate::rkyv::{load_compressed_archive, OwnedArchived};
-use crate::tiled::load::{DeserializedMapProperties, DeserializedProperties};
-use bevy_playdate::asset::{
-    AssetAsync, BitmapAsset, BitmapRef, BitmapTableAsset,
-};
+use bevy_playdate::asset::{AssetAsync, BitmapAsset, BitmapRef, BitmapTableAsset};
 use bevy_playdate::file::{BufferedWriter, FileHandle};
 use bevy_playdate::jobs::{
     AsyncLoadCtx, GenJobExtensions, JobFinished, JobHandle, Jobs, JobsScheduler,
 };
 use bevy_playdate::sprite::Sprite;
+use bevy_reflect::Reflect;
+use core::ops::Deref;
+use derive_more::Deref;
+use no_std_io2::io::Write;
+use pd::sys::ffi::LCDBitmapFlip;
 use tiledpd::tilemap::{
     ArchivedImageLayer, ArchivedLayer, ArchivedLayerData, ArchivedObjectLayer, ArchivedTileLayer,
     ArchivedTilemap,

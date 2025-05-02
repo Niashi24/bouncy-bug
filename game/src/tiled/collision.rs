@@ -143,11 +143,7 @@ impl<'w, 's> Collision<'w, 's> {
             .map(|(e, _, _)| e)
     }
 
-    pub fn raycast(
-        &self,
-        ray: &Ray,
-        max_time_of_impact: f32,
-    ) -> Option<(Entity, RayIntersection)> {
+    pub fn raycast(&self, ray: &Ray, max_time_of_impact: f32) -> Option<(Entity, RayIntersection)> {
         let mut closest_ray: Option<(Entity, RayIntersection)> = None;
         for (entity, layer, transform) in self.layers.iter() {
             let hit = layer.raycast(transform, ray, max_time_of_impact);

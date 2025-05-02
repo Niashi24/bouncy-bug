@@ -10,7 +10,7 @@ use bevy_input::ButtonInput;
 use bevy_math::IVec2;
 use core::time::Duration;
 use playdate::graphics::bitmap::LCDColorConst;
-use playdate::graphics::{draw_line, fill_rect, Graphics};
+use playdate::graphics::{Graphics, draw_line, fill_rect};
 use playdate::sprite::draw_sprites;
 use playdate::sys::ffi::LCDColor;
 use playdate::system::System;

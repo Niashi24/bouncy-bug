@@ -6,8 +6,8 @@ use core::ffi::c_void;
 
 use no_std_io2::io;
 use no_std_io2::io::{Read, Seek, SeekFrom, Write};
-use playdate::sys::ffi::{FileOptions, SDFile};
 use playdate::sys as playdate_sys;
+use playdate::sys::ffi::{FileOptions, SDFile};
 
 pub struct FileHandle {
     handle: *mut SDFile,
