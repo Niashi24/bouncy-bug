@@ -1,13 +1,17 @@
 ﻿use alloc::sync::Arc;
+use core::fmt::{Debug, Formatter};
 use bevy_ecs::component::Component;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::system::{Query, SystemParam};
 use bevy_math::Vec2;
+use derive_more::{Display, Error};
 use itertools::Itertools;
 use parry2d::na::{Isometry2, Point2, Vector2};
-use parry2d::query::{Ray, RayCast, RayIntersection, ShapeCastHit, ShapeCastOptions};
+use parry2d::query::{Contact, Ray, RayCast, RayIntersection, ShapeCastHit, ShapeCastOptions};
 use parry2d::shape::{Ball, Compound, Segment, SharedShape};
+use pd::sys::log::println;
 use bevy_playdate::transform::GlobalTransform;
+use diagnostic::dbg;
 use tiledpd::tilemap::ArchivedLayerCollision;
 
 #[derive(Component, Clone)]
@@ -69,6 +73,22 @@ impl TileLayerCollision {
             &Vector2::zeros(),
             &self.0,
             options,
+        ).unwrap()
+    }
+    
+    pub fn contact(
+        &self,
+        transform: &GlobalTransform,
+        pos: Vec2,
+        r: f32,
+    ) -> Option<Contact> {
+        let ball = Ball::new(r);
+        parry2d::query::contact(
+            &Isometry2::translation(pos.x, pos.y),
+            &ball,
+            &Isometry2::translation(transform.x, transform.y),
+            &self.0,
+            0.0,
         ).unwrap()
     }
 }
@@ -156,22 +176,60 @@ impl<'w, 's> Collision<'w, 's> {
     }
     
     pub fn circle_cast_repeat<'a>(&'a self, pos: Vec2, dir: Vec2, r: f32, options: ShapeCastOptions) -> CastRepeat<'a, 'w, 's> {
+        self.cast_repeat(pos, dir, r, options, reflect_ray)
+    }
+
+    pub fn move_and_slide<'a>(&'a self, pos: Vec2, dir: Vec2, r: f32, options: ShapeCastOptions) -> CastRepeat<'a, 'w, 's> {
+        self.cast_repeat(pos, dir, r, options, slide_to_surface)
+    }
+    
+    pub fn contact(&self, pos: Vec2, r: f32) -> Option<(Entity, Contact)> {
+        self.layers.iter()
+            .filter_map(|(e, layer, transform)|
+                layer.contact(transform, pos, r)
+                    .map(|c| (e, c))
+            )
+            .next()
+    }
+    
+    pub fn cast_repeat<'a>(&'a self, pos: Vec2, dir: Vec2, r: f32, options: ShapeCastOptions, dir_update: DirUpdate) -> CastRepeat<'a, 'w, 's> {
         CastRepeat {
             collision: self,
             pos,
             dir,
             r,
             options,
-            iterations_remaining: 8,
+            iterations_remaining: 2,
+            dir_update,
         }
+    }
+    
+    
+}
+
+pub fn reflect_ray(dir: Vec2, normal: Vec2) -> Result<Vec2, CastRepeatEnd> {
+    let dot = Vec2::dot(dir, normal);
+    Ok(dir - 2.0 * dot * normal)
+}
+
+pub fn slide_to_surface(dir: Vec2, normal: Vec2) -> Result<Vec2, CastRepeatEnd> {
+    let dir_n = dir.normalize_or_zero();
+    // 1 degree of leeway to detect if it is a 90 degree angle
+    const DEGREE_CUTOFF: f32 = 0.0001523048436;
+    if dir_n.dot(normal).abs() < DEGREE_CUTOFF {
+        Err(CastRepeatEnd::NinetyDegree)
+    } else {        
+        let out_dir = (dir_n - Vec2::dot(dir_n, normal) * normal).normalize_or_zero();
+        
+        // println!("{:?} + {:?} -> {:?}", dir, normal, out_dir * dir.length());
+        
+        Ok(out_dir * dir.length())
     }
 }
 
-pub fn reflect_ray(dir: Vec2, normal: Vec2) -> Vec2 {
-    let dot = Vec2::dot(dir, normal);
-    dir - 2.0 * dot * normal
-}
+pub type DirUpdate = fn(Vec2, Vec2) -> Result<Vec2, CastRepeatEnd>;
 
+#[derive(Copy, Clone)]
 pub struct CastRepeat<'a, 'w, 's> {
     collision: &'a Collision<'w, 's>,
     pub pos: Vec2,
@@ -179,40 +237,75 @@ pub struct CastRepeat<'a, 'w, 's> {
     pub r: f32,
     pub options: ShapeCastOptions,
     pub iterations_remaining: u32,
+    pub dir_update: DirUpdate,
 }
 
-impl<'a, 'w, 's> Iterator for CastRepeat<'a, 'w, 's> {
-    type Item = ShapeCastHit;
+#[derive(Debug, Display, Error, Copy, Clone, Eq, PartialEq)]
+pub enum CastRepeatEnd {
+    #[display("no collisions detected")]
+    NoCollision,
+    #[display("hit max iterations")]
+    MaxIterations,
+    #[display("hit collision at ninety degrees")]
+    NinetyDegree,
+    #[display("was inside an object at the time")]
+    InsideObject,
+}
 
-    fn next(&mut self) -> Option<Self::Item> {
+impl<'a, 'w, 's> CastRepeat<'a, 'w, 's> {
+    pub fn fire(&mut self) -> Result<ShapeCastHit, CastRepeatEnd> {
         if self.iterations_remaining == 0 {
-            println!("max iterations reached");
-            return None;
+            return Err(CastRepeatEnd::MaxIterations);
         }
-        
-        let Some((_, next)) = self.collision.circle_cast(self.pos, self.r, self.dir, self.options) else {
+
+        // Use slightly smaller radius so we can fit in tight gaps,
+        // and avoid running into the same piece of collision twice
+        let Some((_, next)) = self.collision.circle_cast(self.pos, self.r * 0.95, self.dir, self.options) else {
             self.pos += self.dir * self.options.max_time_of_impact;
             self.options.max_time_of_impact = 0.0;
-            
-            return None;
+
+            return Err(CastRepeatEnd::NoCollision);
         };
-        if next.time_of_impact <= 0.001 {
-            println!("was inside: {}", next.time_of_impact);
-            return None;
+
+        if next.time_of_impact == 0.0 {
+            return Err(CastRepeatEnd::InsideObject);
         }
+
+        let time = next.time_of_impact;
+        let mut next_pos = self.pos + self.dir * time;
         let normal = Vec2::new(next.normal2.x, next.normal2.y);
+        // need to correct position because of the smaller radius we used in cast
+        if let Some((_, contact)) = self.collision.contact(next_pos, self.r) {
+            next_pos += contact.dist * Vec2::new(contact.normal1.x, contact.normal1.y);
+        }
         
-        self.pos = self.pos + self.dir * next.time_of_impact;
-        // need to move a bit away from the wall so we don't run into it on next iteration
-        // todo: this correction should back in the direction 
-        self.pos += normal * 1.0;
-        
-        self.dir = reflect_ray(self.dir, normal);
-        self.options.max_time_of_impact -= next.time_of_impact;
-        
+        // not sure if this is doing anything
+        if next_pos.distance_squared(self.pos) < 0.01 {
+            return Err(CastRepeatEnd::NinetyDegree);
+        }
+
+        self.pos = next_pos;
+
+        let next_dir = (self.dir_update)(self.dir, normal)?;
+
+        self.dir = next_dir;
+        self.options.max_time_of_impact -= time;
+
         self.iterations_remaining = self.iterations_remaining.saturating_sub(1);
-        
-        Some(next)
+
+        Ok(next)
+    }
+}
+
+impl<'a, 'w, 's> Debug for CastRepeat<'a, 'w, 's> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("CastRepeat")
+            .field("pos", &self.pos)
+            .field("dir", &self.dir)
+            .field("r", &self.r)
+            .field("options", &self.options)
+            .field("iterations_remaining", &self.iterations_remaining)
+            .finish()
     }
 }
 

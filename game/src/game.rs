@@ -1,5 +1,6 @@
 ﻿use alloc::{format, vec};
 use alloc::string::{String, ToString};
+use core::ops::{Deref, DerefMut};
 use bevy_app::{App, Last, Plugin, PostUpdate, Startup, Update};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::name::Name;
@@ -39,7 +40,7 @@ impl Plugin for GamePlugin {
         // app.add_systems(Update, draw_text_test);
         app.add_systems(Update, move_camera);
         app.add_systems(Last, (control_job, display_job).chain().after(Jobs::run_jobs_system));
-        app.add_systems(PostUpdate, (debug_shape.run_if(in_debug), test_ray).after(draw_sprites));
+        app.add_systems(PostUpdate, (debug_shape.run_if(in_debug)).after(draw_sprites));
     }
 }
 
@@ -147,7 +148,7 @@ fn test_ray(
             },
         );
         
-        let mut rays = collision.circle_cast_repeat(
+        let mut rays = collision.move_and_slide(
             camera,
             rot,
             12.0,
@@ -158,7 +159,7 @@ fn test_ray(
         );
         
         let mut last_point = camera;
-        while let Some(hit) = rays.next() {
+        while let Ok(hit) = rays.fire() {
             graphics.draw_line(
                 last_point.x as i32,
                 last_point.y as i32,
@@ -250,11 +251,12 @@ fn control_job(
 }
 
 fn move_camera(
-    mut camera: Option<Single<&mut Transform, With<Camera>>>,
+    mut camera: Option<Single<(&mut Transform, &GlobalTransform), With<Camera>>>,
     input: Res<ButtonInput<PlaydateButton>>,
-    time: Res<Time>
+    time: Res<Time>,
+    collision: Collision,
 ) {
-    let Some(mut camera) = camera else { return; };
+    let Some(camera) = camera else { return; };
     
     let mut x = 0;
     x += input.pressed(PlaydateButton::Right) as i32;
@@ -263,9 +265,25 @@ fn move_camera(
     y += input.pressed(PlaydateButton::Down) as i32;
     y -= input.pressed(PlaydateButton::Up) as i32;
     
-    // avoid deref_mut
     if x != 0 || y != 0 {
-        camera.0 += Vec2::new(x as f32, y as f32) * time.delta_secs() * 100.0;
+        let (mut camera, transform) = camera.into_inner();
+        let vel = Vec2::new(x as f32, y as f32).normalize() * 150.0;
+        let mut move_and_slide = collision.move_and_slide(transform.0, vel, 12.0, ShapeCastOptions {
+            max_time_of_impact: time.delta_secs(),
+            ..ShapeCastOptions::default()
+        });
+        
+        while let Ok(_hit) = move_and_slide.fire() {}
+        
+        // safety check:
+        let new_pos = if let Some((_, contact)) = collision.contact(move_and_slide.pos, 12.0) {
+            let translation = contact.dist * Vec2::new(contact.normal1.x, contact.normal1.y);
+            move_and_slide.pos + translation
+        } else {
+            move_and_slide.pos
+        };
+        let displacement = new_pos - transform.0;
+        camera.0 += displacement;
     }
 }
 
