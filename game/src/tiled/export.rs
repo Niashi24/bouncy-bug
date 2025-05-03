@@ -19,6 +19,9 @@ const USE_AS_PROPERTY: &[UseAs] = &[UseAs::Property];
 
 type ExportConversionResult = Result<Vec<TypeExport>, ExportConversionError>;
 
+#[derive(Debug, Reflect, Clone)]
+pub struct PathField(pub String);
+
 #[derive(Debug, Eq, PartialEq, Copy, Clone, Display)]
 enum ExportConversionError {
     #[display("lists fields are not supported")]
@@ -626,7 +629,7 @@ fn type_to_field(
         "alloc::borrow::Cow<str>" | "alloc::string::String" | "char" => (FieldType::String, None),
 
         "bevy_color::color::Color" => (FieldType::Color, None),
-        "std::path::PathBuf" => (FieldType::File, None),
+        "game::tiled::export::PathField" => (FieldType::File, None),
         f if f.starts_with("bevy_asset::handle::Handle") => (FieldType::File, None),
         path => {
             if matches!(info, TypeInfo::Opaque(_)) {

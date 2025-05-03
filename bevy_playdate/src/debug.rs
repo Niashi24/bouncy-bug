@@ -15,6 +15,7 @@ use playdate::sprite::draw_sprites;
 use playdate::sys::ffi::LCDColor;
 use playdate::system::System;
 use playdate::{api, println};
+use crate::view::DrawOffset;
 
 pub struct DebugPlugin;
 
@@ -62,7 +63,7 @@ pub fn draw_fps_top_left() {
 
 pub fn toggle_debug_system(input: Res<ButtonInput<PlaydateButton>>, mut debug: ResMut<Debug>) {
     use PlaydateButton as PDB;
-    const DEBUG_COMBO: [PDB; 4] = [PDB::Up, PDB::Right, PDB::A, PDB::B];
+    const DEBUG_COMBO: [PDB; 3] = [PDB::Up, PDB::Left, PDB::B];
     if input.all_pressed(DEBUG_COMBO) && input.any_just_pressed(DEBUG_COMBO) {
         debug.toggle_enabled();
     }
@@ -226,6 +227,16 @@ impl FpsLines {
     }
 
     pub fn draw(&self, bottom_right: IVec2) {
+        let Some(max_frame) = self.frames.iter().max() else { return; };
+        let height = (max_frame.as_secs_f32() * self.display_scale) as i32;
+        fill_rect(
+            bottom_right.x - self.frames.len() as i32,
+            bottom_right.y - height,
+            self.frames.len() as i32,
+            height,
+            LCDColor::WHITE,
+        );
+        
         let mut x = bottom_right.x;
         for frame in &self.frames {
             let height = (frame.as_secs_f32() * self.display_scale) as i32;
@@ -246,7 +257,7 @@ impl FpsLines {
         fps.push(timer.time_in_frame());
     }
 
-    pub fn draw_system(fps: Res<Self>) {
-        fps.draw(IVec2::new(399, 239));
+    pub fn draw_system(fps: Res<Self>, draw_offset: Res<DrawOffset>) {
+        fps.draw(draw_offset.bottom_right());
     }
 }

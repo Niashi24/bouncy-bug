@@ -15,6 +15,7 @@ use bevy_reflect::{
 use hashbrown::HashMap;
 use tiledpd::properties::{ArchivedProperties, ArchivedPropertyValue};
 use tiledpd::tilemap::{ArchivedLayerData, ArchivedTilemap};
+use crate::tiled::export::PathField;
 
 #[derive(Debug, Clone)]
 pub struct DeserializedMapProperties<const HYDRATED: bool = false> {
@@ -298,7 +299,7 @@ impl DeserializedProperties {
             ("alloc::string::String", PV::StringValue(s), _) => Ok(Box::new(s.to_string())),
             ("char", PV::StringValue(s), _) => Ok(Box::new(s.chars().next().unwrap())),
             ("alloc::string::String", PV::FileValue(s), _) => Ok(Box::new(s.to_string())),
-            // ("std::path::PathBuf", PV::FileValue(s), _) => Ok(Box::new(PathBuf::from(s))),
+            ("game::tiled::export::PathField", PV::FileValue(s), _) => Ok(Box::new(PathField(s.to_string()))),
             // (a, PV::FileValue(s), _) if a.starts_with("bevy_asset::handle::Handle") => {
             //     if let Some(cx) = load_cx.as_mut() {
             //         Ok(Box::new(cx.loader().with_unknown_type().load(s)))

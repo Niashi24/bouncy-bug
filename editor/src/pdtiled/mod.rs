@@ -85,7 +85,10 @@ pub fn convert_layer_data(main_layer: Layer) -> LayerData {
                             tiles.push(tile);
                         }
                     }
-                    let layer_collision = generate_layer_collision(&layer);
+
+                    let layer_collision = main_layer.properties.iter()
+                        .any(|(_, i)| is_generate_collision(dbg!(i)))
+                        .then(|| generate_layer_collision(&layer));
 
                     let image = render_tile_layer(layer);
                     // image.save()
@@ -107,7 +110,7 @@ pub fn convert_layer_data(main_layer: Layer) -> LayerData {
                         image: Some(name.to_string_lossy().to_string()),
                     })
                 }
-                TileLayer::Infinite(_) => unimplemented!("infinite layer"),
+                TileLayer::Infinite(_) => todo!("infinite layer"),
             }
         }
         LayerType::Objects(layer) => {
@@ -334,8 +337,16 @@ pub fn convert_object_shape(shape: tiled::ObjectShape) -> ObjectShape {
 pub fn convert_properties(properties: tiled::Properties) -> tiledpd::properties::Properties {
     properties
         .into_iter()
+        .filter(|(_, v)| !is_generate_collision(v))
         .map(|(k, v)| (k, convert_property(v)))
         .collect()
+}
+
+fn is_generate_collision(value: &PropertyValue) -> bool {
+    match value {
+        PropertyValue::ClassValue { property_type, .. } => property_type.ends_with("GenerateCollision"),
+        _ => false,
+    }
 }
 
 pub fn convert_property(property: PropertyValue) -> PVPD {

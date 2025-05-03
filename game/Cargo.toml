@@ -41,12 +41,12 @@ serde = { version = "1.0.217", default-features = false, features = ["derive", "
 # doc: https://github.com/boozook/playdate/blob/main/support/build/README.md#metadata
 # official doc: https://sdk.play.date/#pdxinfo
 [package.metadata.playdate]
-name = "Bouncy Bug"
+name = "Bouncy Bondi"
 author = "Niashi"
 version = "0.1.0"
-bundle-id = "com.niashi.bouncybug"
-build-number = 445
-description = "TODO: Description for the Bouncy Bug game."
+bundle-id = "com.niashi.bouncybondi"
+build-number = 38
+description = "TODO: Description for the Bouncy Bondi game."
 
 #content-warning = "This game contains mild realistic, violence and bloodshed."
 #content-warning2 = "Really scary game."
@@ -58,12 +58,9 @@ launch-sound-path = "sfx/jump"
 "assets/level-1-layer-(1).png" = "../assets/export/level-1-layer-(1).png"
 "assets/level-1.tmb" = "../assets/export/level-1.tmb"
 "assets/main-tileset.tsb" = "../assets/export/main-tileset.tsb"
-"assets/square-layer-(1).png" = "../assets/export/square-layer-(1).png"
-"assets/square.tmb" = "../assets/export/square.tmb"
-"assets/tiles-table-16-16.png" = "../assets/export/tiles-table-16-16.png"
-"assets/tiles.tsb" = "../assets/export/tiles.tsb"
 "assets/tileset-table-24-24.png" = "../assets/export/tileset-table-24-24.png"
-"assets/folder/tiles-copy.png" = "../assets/export/folder/tiles-copy.png"
+"assets/title-screen-layer-(1).png" = "../assets/export/title-screen-layer-(1).png"
+"assets/title-screen.tmb" = "../assets/export/title-screen.tmb"
 
 #"img/system/" = "${PLAYDATE_SDK_PATH}/Examples/Game Template/Source/SystemAssets/*.png"
 #"sfx/jump.wav" = "${PLAYDATE_SDK_PATH}/Examples/Level 1-1/Source/sfx/jump.wav"

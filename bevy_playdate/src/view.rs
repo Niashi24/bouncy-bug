@@ -3,7 +3,7 @@ use crate::transform::{GlobalTransform, Transform};
 use bevy_app::{App, Plugin, PostUpdate};
 use bevy_ecs::change_detection::*;
 use bevy_ecs::prelude::*;
-use bevy_math::Vec2;
+use bevy_math::{IVec2, Vec2};
 use bevy_reflect::Reflect;
 use bevy_reflect::prelude::ReflectDefault;
 use playdate::graphics::Graphics;
@@ -15,11 +15,15 @@ impl Plugin for ViewPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             PostUpdate,
-            (camera_offset, sync_sprite_transform, reset_removed_camera)
+            (
+                (camera_offset, sync_sprite_transform, reset_removed_camera),
+                update_offset
+            ).chain()
                 .after(crate::transform::TransformSystem::TransformPropagate)
                 .before(draw_sprites),
         )
-        .register_type::<Camera>();
+            .init_resource::<DrawOffset>()
+            .register_type::<Camera>();
     }
 }
 
@@ -31,23 +35,43 @@ pub struct Camera {
     pub offset: Vec2,
 }
 
-pub fn camera_offset(camera: Option<Single<(&Camera, &GlobalTransform)>>) {
+#[derive(Resource, Default)]
+pub struct DrawOffset(pub IVec2);
+
+impl DrawOffset {
+    /// returns the current world position of the bottom right pixel on the screen
+    pub fn bottom_right(&self) -> IVec2 {
+        IVec2::new(399, 239) - self.0
+    }
+}
+
+pub fn update_offset(offset: Res<DrawOffset>) {
+    if offset.is_changed() {
+        Graphics::Default().set_draw_offset(offset.0.x, offset.0.y);
+    }
+}
+
+pub fn camera_offset(
+    camera: Option<Single<(&Camera, &GlobalTransform)>>,
+    mut offset: ResMut<DrawOffset>,
+) {
     let Some(camera) = camera else { return };
     let (camera, transform) = camera.into_inner();
 
     let mut pos = transform.0;
     pos += Vec2::new(-200.0, -120.0);
     pos += camera.offset;
-
-    Graphics::Default().set_draw_offset(-pos.x as i32, -pos.y as i32);
+    
+    offset.0 = IVec2::new(-pos.x as i32, -pos.y as i32);
 }
 
 pub fn reset_removed_camera(
     camera: Option<Single<Ref<GlobalTransform>, With<Camera>>>,
     mut removed_components: RemovedComponents<Camera>,
+    mut offset: ResMut<DrawOffset>,
 ) {
     if removed_components.read().count() > 0 && camera.is_none() {
-        Graphics::Default().set_draw_offset(0, 0);
+        offset.0 = IVec2::ZERO;
     }
 }
 

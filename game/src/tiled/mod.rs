@@ -11,7 +11,7 @@ use bevy_ecs::reflect::AppTypeRegistry;
 use bevy_ecs::system::Res;
 use bevy_ecs::world::EntityWorldMut;
 use bevy_platform::sync::Arc;
-use bevy_playdate::asset::{AssetAsync, BitmapAsset, BitmapRef, BitmapTableAsset};
+use bevy_playdate::asset::{AssetAsync, BitmapAsset, BitmapRef, BitmapTableAsset, ResAssetCache};
 use bevy_playdate::file::{BufferedWriter, FileHandle};
 use bevy_playdate::jobs::{
     AsyncLoadCtx, GenJobExtensions, JobFinished, JobHandle, Jobs, JobsScheduler,
@@ -29,7 +29,7 @@ use tiledpd::tilemap::{
 use tiledpd::tileset::{ArchivedTileData, ArchivedTileset};
 
 pub mod collision;
-mod export;
+pub mod export;
 pub mod job;
 mod load;
 pub mod spawn;
@@ -45,7 +45,8 @@ impl Plugin for TiledPlugin {
         add_loader::<MapLoader>(app);
         add_loader::<SpriteTableLoader>(app);
 
-        app.register_type::<Static>();
+        app.register_type::<Static>()
+            .register_type::<export::PathField>();
     }
 }
 
@@ -238,6 +239,7 @@ pub struct ObjectLayer<'map> {
 // }
 
 pub use tiledpd::tilemap::Tile as TileData;
+
 #[derive(Deref)]
 pub struct Tile<'map> {
     map: &'map Map,
@@ -402,10 +404,19 @@ impl<'a> JobCommandsExt for EntityCommands<'a> {
     ) -> &mut Self {
         let path = path.into();
         self.queue(move |mut world: EntityWorldMut| {
-            let job = world
-                .resource_mut::<JobsScheduler>()
-                .load_asset::<A::Asset>(priority, path);
-            world.insert(LoadingAsset { job, loader });
+            if let Some(x) = world.resource::<ResAssetCache>().0.try_read().unwrap()
+                .get::<A::Asset>(&path) {
+                let id = world.id();
+                world.world_scope(move |w| {
+                    let mut commands = w.commands();
+                    loader.on_finish_load(&mut commands.entity(id), Ok(x));
+                })
+            } else {
+                let job = world
+                    .resource_mut::<JobsScheduler>()
+                    .load_asset::<A::Asset>(priority, path);
+                world.insert(LoadingAsset { job, loader });
+            }
         })
     }
 }

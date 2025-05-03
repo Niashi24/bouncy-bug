@@ -5,6 +5,9 @@
  </editorsettings>
  <tileset firstgid="1" source="main-tileset.tsx"/>
  <layer id="1" name="Tile Layer 1" width="32" height="15">
+  <properties>
+   <property name="gen" type="class" propertytype="GenerateCollision"/>
+  </properties>
   <data encoding="csv">
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.11.0" orientation="orthogonal" renderorder="right-down" width="17" height="15" tilewidth="24" tileheight="24" infinite="0" nextlayerid="2" nextobjectid="1">
+ <editorsettings>
+  <export target="title-screen.tmx" format="tmx"/>
+ </editorsettings>
+ <properties>
+  <property name="level-1" type="class" propertytype="game::game::MapLoad">
+   <properties>
+    <property name="path" type="file" value="level-1.tmx"/>
+    <property name="priority" type="int" value="100"/>
+   </properties>
+  </property>
+ </properties>
+ <tileset firstgid="1" source="main-tileset.tsx"/>
+ <layer id="1" name="Tile Layer 1" width="17" height="15">
+  <data encoding="csv">
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,
+1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,
+1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,
+1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,
+1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,
+1,1,1,2,0,0,0,0,0,0,0,0,0,2147483650,1,1,1,
+1,1,1,1,2,0,0,0,0,0,0,0,2147483650,1,1,1,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+</data>
+ </layer>
+</map>

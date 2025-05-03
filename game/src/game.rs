@@ -1,17 +1,20 @@
+use bevy_ecs::prelude::{EntityCommands, ReflectComponent};
 use crate::tiled::collision::{Collision, TileLayerCollision};
-use crate::tiled::{JobCommandsExt, MapLoader, SpriteLoader, SpriteTableLoader};
+use crate::tiled::spawn::MapHandle;
+use crate::tiled::{AssetLoader, JobCommandsExt, Map, MapLoader, SpriteLoader, SpriteTableLoader};
 use alloc::string::String;
 use alloc::{format, vec};
+use alloc::sync::Arc;
 use bevy_app::{App, Last, Plugin, PostUpdate, Startup, Update};
-use bevy_ecs::prelude::{
-    Children, Commands, Component, Entity, In, IntoScheduleConfigs, Name, Query, Res, ResMut,
-    Single, With,
-};
+use bevy_ecs::component::HookContext;
+use bevy_ecs::prelude::{Children, Commands, Component, Entity, IntoScheduleConfigs, Name, Query, Res, ResMut, Single, With};
+use bevy_ecs::world::DeferredWorld;
 use bevy_input::ButtonInput;
 use bevy_math::{Rot2, Vec2};
-use bevy_playdate::debug::in_debug;
+use bevy_reflect::Reflect;
+use bevy_playdate::debug::{in_debug, Debug};
 use bevy_playdate::input::{CrankInput, PlaydateButton};
-use bevy_playdate::jobs::{JobHandle, JobStatusRef, Jobs, JobsScheduler, WorkResult};
+use bevy_playdate::jobs::{Jobs, JobsScheduler};
 use bevy_playdate::sprite::Sprite;
 use bevy_playdate::time::RunningTimer;
 use bevy_playdate::transform::{GlobalTransform, Transform};
@@ -24,86 +27,66 @@ use pd::graphics::text::draw_text;
 use pd::graphics::{fill_rect, Graphics, LineCapStyle};
 use pd::sprite::draw_sprites;
 use pd::sys::ffi::LCDColor;
+use bevy_playdate::asset::{AssetAsync, AssetCache, ResAssetCache};
+use diagnostic::dbg;
+use crate::tiled::export::PathField;
 
 pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, test_spawn_job)
+        app
+            .add_systems(Startup, spawn_title_screen)
             .add_systems(Update, move_camera)
             .add_systems(
                 Last,
-                (control_job, display_job)
+                (control_job, display_timer)
                     .chain()
                     .after(Jobs::run_jobs_system),
             )
             .add_systems(
                 PostUpdate,
-                (debug_shape.run_if(in_debug)).after(draw_sprites),
-            );
+                (debug_collision.run_if(in_debug)).after(draw_sprites),
+            )
+            .register_type::<MapLoad>();
     }
 }
 
-fn test_spawn_job(mut commands: Commands, mut jobs: ResMut<JobsScheduler>) {
-    commands.spawn(Sprite::new_from_draw(10, 10, Color::BLACK, |_| {}));
-
-    commands.spawn(JobTestComponent {
-        job: jobs.add(0, TestJob(0), test_job),
-    });
-    commands.spawn(JobTestComponent {
-        job: jobs.add(0, TestJob(5000), test_job),
-    });
-    commands.spawn(JobTestComponent {
-        job: jobs.add(1, TestJob(2000), test_job),
-    });
-    commands.spawn(JobTestComponent {
-        job: jobs.add(1, TestJob(6000), test_job),
-    });
-
-    commands
-        .spawn((Name::new("Test sprite"), Transform::from_xy(20.0, 200.0)))
-        .insert_loading_asset(
-            SpriteTableLoader {
-                sprite_loader: SpriteLoader::default(),
-                index: 2,
-            },
-            0,
-            "assets/tiles",
-        );
+fn spawn_title_screen(mut commands: Commands) {
+    commands.spawn((
+        Name::new("Title screen"),
+        Transform::from_xy(-4.0, 0.0),
+    ))
+        .insert_loading_asset(MapLoader, -100, "assets/title-screen.tmb");
 }
 
-fn display_job(q_test: Query<&JobTestComponent>, jobs: Res<Jobs>, timer: Res<RunningTimer>) {
-    let mut y = 64;
-    fill_rect(64, y, 150, 16, LCDColor::WHITE);
+// fn test_spawn_job(mut commands: Commands) {
+//     commands.spawn(Sprite::new_from_draw(10, 10, Color::BLACK, |_| {}));
+// 
+//     commands
+//         .spawn((Name::new("Test sprite"), Transform::from_xy(20.0, 200.0)))
+//         .insert_loading_asset(
+//             SpriteTableLoader {
+//                 sprite_loader: SpriteLoader::default(),
+//                 index: 2,
+//             },
+//             0,
+//             "assets/tiles",
+//         );
+// }
+
+fn display_timer(timer: Res<RunningTimer>) {
+    fill_rect(64, 64, 150, 16, LCDColor::WHITE);
     draw_text(
         format!("r: {:.3}ms", timer.time_in_frame().as_secs_f32() * 1000.0),
         64,
-        y,
+        64,
     )
     .unwrap();
-
-    y += 16;
-    for test in q_test.iter() {
-        let progress = jobs.progress(&test.job);
-
-        fill_rect(64, y, 150, 16, LCDColor::WHITE);
-        match progress {
-            Some(JobStatusRef::InProgress(counter)) => {
-                draw_text(format!("current: {}", counter.0), 64, y).unwrap();
-            }
-            Some(JobStatusRef::Success(())) => {
-                draw_text("finished", 64, y).unwrap();
-            }
-            _ => {
-                draw_text("in progress", 64, y).unwrap();
-            }
-        }
-
-        y += 16;
-    }
+    
 }
 
-fn debug_shape(tile_layer_collision: Query<(&TileLayerCollision, &GlobalTransform)>) {
+fn debug_collision(tile_layer_collision: Query<(&TileLayerCollision, &GlobalTransform)>) {
     let draw = Graphics::new_with(Cache::default());
     for (layer, transform) in tile_layer_collision.iter() {
         for (_, shape) in layer.0.shapes() {
@@ -189,25 +172,59 @@ fn test_ray(
 }
 
 fn control_job(
-    q_test: Query<(Entity, &JobTestComponent)>,
+    q_test: Query<(Entity, &MapHandle)>,
     mut jobs: ResMut<Jobs>,
-    mut scheduler: ResMut<JobsScheduler>,
     mut commands: Commands,
     input: Res<ButtonInput<PlaydateButton>>,
+    debug: Res<Debug>,
+    assets: Res<ResAssetCache>,
 ) {
-    if input.just_pressed(PlaydateButton::A) {
-        commands
-            .spawn(JobTestComponent {
-                job: scheduler.add(100, TestJob(9500), test_job),
-            })
-            .insert((Name::new("Map"), Transform::from_xy(100.0, 20.0)))
-            .insert_loading_asset(MapLoader, -10, "assets/level-1.tmb");
+    if input.just_pressed(PlaydateButton::Down) && debug.enabled {
+        assets.0.try_read().unwrap().debug_loaded();
     }
-
-    if input.just_pressed(PlaydateButton::B) {
-        jobs.clear_all();
+    
+    if input.just_pressed(PlaydateButton::A) {
+        commands.spawn((
+            Name::new("Level 1"),
+            Transform::default(),
+        ))
+            .insert_loading_asset(MapLoader, 0, "assets/level-1.tmb");
+        
         for (e, _) in q_test.iter() {
             commands.entity(e).despawn();
+        }
+    }
+}
+
+#[derive(Component, Reflect, Clone)]
+#[reflect(Component)]
+#[component(
+    on_insert = load,
+)]
+pub struct MapLoad {
+    pub path: PathField,
+    pub priority: i32,
+}
+
+pub fn load(mut world: DeferredWorld, hook_context: HookContext) {
+    let load = world.get::<MapLoad>(hook_context.entity).unwrap().clone();
+    
+    world.commands().entity(hook_context.entity)
+        .insert_loading_asset(MapLoadLoader, load.priority as isize, load.path.0)
+        .remove::<MapLoad>();
+}
+
+pub struct MapLoadLoader;
+
+impl AssetLoader for MapLoadLoader {
+    type Asset = Map;
+
+    fn on_finish_load(&self, commands: &mut EntityCommands, result: Result<Arc<Self::Asset>, <<Self as AssetLoader>::Asset as AssetAsync>::Error>) {
+        match result {
+            Ok(map) => { commands.insert(MapHandle(map)); },
+            Err(err) => {
+                dbg!(err);
+            }
         }
     }
 }
@@ -276,24 +293,5 @@ fn print_recursive(
     };
     for &child in children {
         print_recursive(level + 1, child, q_name);
-    }
-}
-
-#[derive(Component)]
-struct JobTestComponent {
-    pub job: JobHandle<TestJob, (), ()>,
-}
-
-#[derive(Default)]
-struct TestJob(pub i32);
-
-fn test_job(counter: In<TestJob>) -> WorkResult<TestJob, (), ()> {
-    let mut counter = counter.0;
-    counter.0 += 1;
-
-    if counter.0 >= 10000 {
-        WorkResult::Success(())
-    } else {
-        WorkResult::Continue(counter)
     }
 }

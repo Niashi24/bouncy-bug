@@ -1,4 +1,4 @@
-use crate::dependencies::{AddDependencies, AddDependenciesMut};
+﻿use crate::dependencies::{AddDependencies, AddDependenciesMut};
 use crate::properties::Properties;
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -182,7 +182,7 @@ pub struct TileLayer {
     /// If `Some`, it will use the image as a single sprite on the Layer entity.
     /// If `None`, it will create a sprite on each tile entity.
     pub image: Option<String>,
-    pub layer_collision: LayerCollision,
+    pub layer_collision: Option<LayerCollision>,
 }
 
 impl AddDependencies for ArchivedTileLayer {

@@ -242,7 +242,6 @@ fn process_asset_paths(assets: &mut Assets, asset_paths: Vec<&mut String>, origi
                 // start with "tiles-16-16.png"
                 // now "tiles"
                 let name = &captures["name"];
-                dbg!(name);
                 // now "tiles" (not sure why this is here, but we ball)
                 let path = Path::new(name.trim_start_matches("assets\\"));
                 // now "parent\tiles"

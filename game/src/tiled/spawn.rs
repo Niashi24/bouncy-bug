@@ -4,15 +4,16 @@ use alloc::string::ToString;
 use alloc::vec::Vec;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::name::Name;
-use bevy_ecs::prelude::{Component, EntityCommands};
+use bevy_ecs::prelude::{Component, EntityCommands, ReflectComponent};
 use bevy_ecs::reflect::ReflectCommandExt;
 use bevy_platform::sync::Arc;
+use bevy_reflect::Reflect;
 use bevy_playdate::transform::Transform;
 use hashbrown::HashMap;
 use tiledpd::tilemap::ArchivedObjectShape;
 
-/// WARNING: This component is only used to keep a reference to the Arc<Map> data.
-///
+/// Contains a reference to the map data.
+/// 
 /// To spawn a map in, use [`Commands::insert_loading_asset`](JobCommandsExt::insert_loading_asset)
 /// with [`MapLoader`](super::MapLoader).
 #[derive(Component, Clone)]
@@ -62,6 +63,11 @@ pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
     };
 
     let mut hydrated = map.map.properties.clone().hydrate(&objects);
+    
+    for component in hydrated.map.properties {
+        entity_commands.insert_reflect(component);
+    }
+    
     let mut z_index = 0;
 
     entity_commands.with_children(|commands| {
@@ -81,8 +87,10 @@ pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
 
             match layer.data() {
                 LayerData::TileLayer(tile_layer) => {
-                    layer_entity.insert(TileLayerCollision::from(&tile_layer.layer_collision));
-
+                    if let Some(collision) = tile_layer.layer_collision.as_ref() {
+                        layer_entity.insert(TileLayerCollision::from(collision));
+                    }
+                    
                     if let Some(image) = tile_layer.image.as_ref() {
                         z_index += 1;
                         layer_entity.insert_loading_asset(
