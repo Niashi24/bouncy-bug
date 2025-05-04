@@ -18,11 +18,11 @@
             "expandedObjectLayers": [
                 2
             ],
-            "scale": 1.1821,
+            "scale": 1.0213,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 407.7489214110482,
-                "y": 95.5925894594366
+                "x": 488.5929697444433,
+                "y": 152.74649955938506
             }
         },
         "level-1.tmx": {
@@ -105,6 +105,7 @@
     "last.exportedFilePath": "C:/Users/niasp/Documents/Programming/bouncy-bug/assets",
     "last.externalTilesetPath": "C:/Users/niasp/Documents/Programming/bouncy-bug/assets",
     "last.imagePath": "C:/Users/niasp/Documents/Programming/bouncy-bug/assets",
+    "last.objectTemplatePath": "C:/Users/niasp/Documents/Programming/bouncy-bug/assets",
     "last.objectTypesPath": "C:/Users/niasp/Documents/PlaydateSDK/Disk/Data/com.niashi.bouncybug/type-export.json",
     "last.worldFilePath": "C:/Users/niasp/Documents/Programming/bouncy-bug/assets",
     "lastUsedTilesetExportFilter": "JSON tileset files (*.tsj *.json)",
@@ -125,6 +126,7 @@
     "project": "bouncy_bug.tiled-project",
     "property.type": "GenerateCollision",
     "recentFiles": [
+        "level-1.tmx",
         "main-tileset.tsx",
         "level-1.edit.tmx",
         "tiles.tsx",

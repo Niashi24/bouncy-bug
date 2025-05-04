@@ -45,7 +45,7 @@ name = "Bouncy Bondi"
 author = "Niashi"
 version = "0.1.0"
 bundle-id = "com.niashi.bouncybondi"
-build-number = 46
+build-number = 48
 description = "TODO: Description for the Bouncy Bondi game."
 
 #content-warning = "This game contains mild realistic, violence and bloodshed."

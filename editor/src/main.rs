@@ -5,11 +5,14 @@ use indexmap::IndexSet;
 use regex::Regex;
 use std::ffi::OsStr;
 use std::fs;
+use std::fs::File;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
 use std::sync::LazyLock;
+use gif::{DisposalMethod, ExtensionData, Repeat};
+use image::{Rgb, Rgba, RgbaImage};
 use tiledpd::dependencies::AddDependenciesMut;
 use toml_edit::{Item, Table, value};
 
@@ -338,4 +341,63 @@ pub fn process_default(path: &Path) {
 
     // path.parent().unwrap()
     // std::fs::create_dir_all(path.parent())
+}
+
+#[test]
+fn generate_transition() {
+    let fps = 50.0;
+    let length = 0.4;
+    
+    const CLEAR: Rgba<u8> = Rgba([0; 4]);
+    const WHITE: Rgba<u8> = Rgba([215, 212, 204, 255]);
+    const BLACK: Rgba<u8> = Rgba([50, 47, 41, 255]);
+    
+    let n = (fps * length) as usize;
+    fn curve(t: f32) -> f32 {
+        (t * core::f32::consts::FRAC_PI_2).sin()
+        // 1.0 - (1.0 - t).powi(3)
+    }
+    
+    // let mut frames = Vec::new();
+    let mut image = File::create("../assets/export/screen-transition-basic.gif").unwrap();
+    let mut encoder = gif::Encoder::new(
+        &mut image,
+        400,
+        240,
+        &[215, 212, 204, 50, 47, 41]
+    ).unwrap();
+    
+    let delay = (1.0 / fps * 1000.0 / 10.0) as u16;
+    dbg!(delay);
+    encoder.write_extension(ExtensionData::new_control_ext(
+        delay,
+        DisposalMethod::Any,
+        false,
+        None,
+    )).unwrap();
+    
+    encoder.set_repeat(Repeat::Infinite).unwrap();
+    
+    for i in 0..n {
+        let t = (i as f32) / ((n - 1) as f32);
+        let width = (curve(t) * (400.0 + 240.0 * 2.0)).round() as u32;
+        
+        
+        let image = RgbaImage::from_fn(400, 240, |x, y| {
+            if x + 2 * y < width {
+                BLACK
+            } else {
+                CLEAR
+            }
+        });
+
+        let mut data = image.into_vec();
+        
+        let frame = gif::Frame::from_rgba(400, 240, &mut data);
+        
+        encoder.write_frame(&frame).unwrap();
+        // frames.push(frame);
+    }
+    
+    
 }

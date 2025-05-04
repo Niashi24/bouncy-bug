@@ -11,6 +11,7 @@ toml_edit = "0.22.24"
 hashbrown = "0.15.2"
 
 geo = "0.30.0"
+gif = "0.13.1"
 indexmap = "2.9.0"
 lz4_flex = { version = "0.11", default-features = false }
 tiled = "0.14.0"
