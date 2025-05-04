@@ -10,6 +10,7 @@ use bevy_platform::sync::Arc;
 use bevy_reflect::Reflect;
 use bevy_playdate::transform::Transform;
 use hashbrown::HashMap;
+use bevy_playdate::visibility::Visibility;
 use tiledpd::tilemap::ArchivedObjectShape;
 
 /// Contains a reference to the map data.
@@ -33,7 +34,6 @@ impl TileLayer {
 
 pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
     entity_commands.insert(MapHandle(Arc::clone(&map)));
-    // let map_data = map.map.data.access();
     // spawn all objects and create object-id-to-entity map
     let objects = {
         let mut objects: HashMap<u32, Entity> = HashMap::new();
@@ -51,6 +51,7 @@ pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
                         (
                             Name::new(obj.name.to_string()),
                             Transform::from_xy(obj.x.to_native(), obj.y.to_native()),
+                            Visibility::inherited_or_hidden(obj.visible),
                         ),
                     ));
                 }
@@ -75,7 +76,7 @@ pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
             let mut layer_entity = commands.spawn((
                 Name::new(layer.name.to_string()),
                 Transform::from_xy(layer.x.to_native(), layer.y.to_native()),
-                // todo: add visibility component
+                Visibility::inherited_or_hidden(layer.visible),
             ));
             let reflect = hydrated.layers.remove(&layer.id.to_native()).unwrap();
 

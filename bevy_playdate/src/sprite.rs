@@ -1,3 +1,4 @@
+use crate::visibility::Visibility;
 use crate::asset::{BitmapAsset, BitmapRef};
 use crate::transform::Transform;
 use bevy_app::{App, Plugin, PostUpdate};
@@ -30,7 +31,7 @@ impl Plugin for SpritePlugin {
 #[derive(Component, Clone, Deref)]
 #[component(on_add = add_to_display_list)]
 #[component(on_replace = remove_from_display_list)]
-#[require(Transform)]
+#[require(Transform, Visibility)]
 pub struct Sprite {
     #[deref]
     spr: PDSprite,

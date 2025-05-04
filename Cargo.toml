@@ -5,7 +5,7 @@ members = ["bevy_playdate", "diagnostic", "editor", "game", "tiledpd"]
 resolver = "3"
 
 [profile.release]
-opt-level = "z"
+opt-level = "s"
 lto = true
 codegen-units = 1
 

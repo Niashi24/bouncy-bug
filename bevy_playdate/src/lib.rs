@@ -12,6 +12,7 @@ pub mod sprite;
 pub mod time;
 pub mod transform;
 pub mod view;
+pub mod visibility;
 
 pub use bevy_playdate_macros::init_app;
 
@@ -31,6 +32,7 @@ impl Plugin for DefaultPlugins {
             view::ViewPlugin,
             transform::TransformPlugin,
             asset::AssetPlugin,
+            visibility::VisibilityPlugin,
         ));
     }
 }
