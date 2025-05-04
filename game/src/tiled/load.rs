@@ -13,8 +13,8 @@ use bevy_reflect::{
     TypeRegistration, TypeRegistry, UnnamedField, VariantInfo, VariantType,
 };
 use hashbrown::HashMap;
-use tiledpd::properties::{ArchivedProperties, ArchivedPropertyValue};
-use tiledpd::tilemap::{ArchivedLayerData, ArchivedTilemap};
+use pd_asset::properties::{ArchivedProperties, ArchivedPropertyValue};
+use pd_asset::tilemap::{ArchivedLayerData, ArchivedTilemap};
 use crate::tiled::export::PathField;
 
 #[derive(Debug, Clone)]

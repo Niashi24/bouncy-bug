@@ -1,7 +1,7 @@
 cargo-features = ["edition2024"]
 
 [workspace]
-members = ["bevy_playdate", "diagnostic", "editor", "game", "tiledpd"]
+members = ["bevy_playdate", "diagnostic", "editor", "game", "pd_asset"]
 resolver = "3"
 
 [profile.release]

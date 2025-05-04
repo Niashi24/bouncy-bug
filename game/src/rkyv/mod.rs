@@ -2,12 +2,12 @@ use alloc::vec::Vec;
 use bevy_playdate::jobs::{load_file_bytes, AsyncLoadCtx};
 use core::fmt::{Debug, Formatter};
 use core::marker::PhantomData;
-use tiledpd::rkyv::api::high::HighValidator;
-use tiledpd::rkyv::bytecheck::CheckBytes;
-use tiledpd::rkyv::seal::Seal;
-use tiledpd::rkyv::util::AlignedVec;
-use tiledpd::rkyv::Portable;
-use tiledpd::RkyvError;
+use pd_asset::rkyv::api::high::HighValidator;
+use pd_asset::rkyv::bytecheck::CheckBytes;
+use pd_asset::rkyv::seal::Seal;
+use pd_asset::rkyv::util::AlignedVec;
+use pd_asset::rkyv::Portable;
+use pd_asset::RkyvError;
 
 const ALIGNMENT: usize = 16;
 pub type AlignVec = AlignedVec<ALIGNMENT>;
@@ -32,7 +32,7 @@ where
     T: Portable + for<'a> CheckBytes<HighValidator<'a, RkyvError>>,
 {
     pub fn new(bytes: AlignVec) -> Result<Self, RkyvError> {
-        let _ = tiledpd::rkyv::access::<T, RkyvError>(&bytes)?;
+        let _ = pd_asset::rkyv::access::<T, RkyvError>(&bytes)?;
 
         let out = Self(bytes, PhantomData);
         out.assert_aligned();
@@ -42,12 +42,12 @@ where
 
     pub fn access(&self) -> &T {
         // SAFETY: Already checked that bytes are valid in `Self::new`
-        unsafe { tiledpd::rkyv::access_unchecked(&self.0) }
+        unsafe { pd_asset::rkyv::access_unchecked(&self.0) }
     }
 
     pub fn access_mut(&mut self) -> Seal<'_, T> {
         // SAFETY: Already checked that bytes are valid in `Self::new`
-        unsafe { tiledpd::rkyv::access_unchecked_mut(&mut self.0) }
+        unsafe { pd_asset::rkyv::access_unchecked_mut(&mut self.0) }
     }
 
     pub fn assert_aligned(&self) {

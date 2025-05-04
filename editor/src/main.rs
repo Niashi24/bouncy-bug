@@ -13,7 +13,7 @@ use std::str::FromStr;
 use std::sync::LazyLock;
 use gif::{DisposalMethod, ExtensionData, Repeat};
 use image::{Rgb, Rgba, RgbaImage};
-use tiledpd::dependencies::AddDependenciesMut;
+use pd_asset::dependencies::AddDependenciesMut;
 use toml_edit::{Item, Table, value};
 
 fn main() -> anyhow::Result<()> {
@@ -174,8 +174,8 @@ fn process_map(path: &Path, assets: &mut Assets) {
 
     process_asset_paths(assets, asset_paths, &true_map_path);
 
-    let bytes = tiledpd::rkyv::to_bytes::<tiledpd::RkyvError>(&map).unwrap();
-    // dbg!(tiledpd::rkyv::access::<ArchivedTilemap, tiledpd::RkyvError>(&bytes).unwrap());
+    let bytes = pd_asset::rkyv::to_bytes::<pd_asset::RkyvError>(&map).unwrap();
+    // dbg!(pd_asset::rkyv::access::<ArchivedTilemap, pd_asset::RkyvError>(&bytes).unwrap());
 
     let bytes = lz4_flex::compress_prepend_size(&bytes);
 
@@ -204,8 +204,8 @@ fn process_tileset(path: &Path, assets: &mut Assets) {
 
     process_asset_paths(assets, asset_paths, &true_set_path);
 
-    let bytes = tiledpd::rkyv::to_bytes::<tiledpd::RkyvError>(&tileset).unwrap();
-    // dbg!(tiledpd::rkyv::access::<ArchivedTileset, tiledpd::RkyvError>(&bytes).unwrap());
+    let bytes = pd_asset::rkyv::to_bytes::<pd_asset::RkyvError>(&tileset).unwrap();
+    // dbg!(pd_asset::rkyv::access::<ArchivedTileset, pd_asset::RkyvError>(&bytes).unwrap());
 
     let bytes = lz4_flex::compress_prepend_size(&bytes);
 

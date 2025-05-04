@@ -11,7 +11,7 @@ use bevy_reflect::Reflect;
 use bevy_playdate::transform::Transform;
 use hashbrown::HashMap;
 use bevy_playdate::visibility::Visibility;
-use tiledpd::tilemap::ArchivedObjectShape;
+use pd_asset::tilemap::ArchivedObjectShape;
 
 /// Contains a reference to the map data.
 /// 

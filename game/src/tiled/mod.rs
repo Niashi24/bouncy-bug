@@ -22,11 +22,11 @@ use core::ops::Deref;
 use derive_more::Deref;
 use no_std_io2::io::Write;
 use pd::sys::ffi::LCDBitmapFlip;
-use tiledpd::tilemap::{
+use pd_asset::tilemap::{
     ArchivedImageLayer, ArchivedLayer, ArchivedLayerData, ArchivedObjectLayer, ArchivedTileLayer,
     ArchivedTilemap,
 };
-use tiledpd::tileset::{ArchivedTileData, ArchivedTileset};
+use pd_asset::tileset::{ArchivedTileData, ArchivedTileset};
 
 pub mod collision;
 pub mod export;
@@ -238,7 +238,7 @@ pub struct ObjectLayer<'map> {
 //     }
 // }
 
-pub use tiledpd::tilemap::Tile as TileData;
+pub use pd_asset::tilemap::Tile as TileData;
 
 #[derive(Deref)]
 pub struct Tile<'map> {

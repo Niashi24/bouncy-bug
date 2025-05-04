@@ -8,12 +8,12 @@ use tiled::{
     FiniteTileLayer, Layer, LayerTile, LayerTileData, LayerType, Object, PropertyValue, TileLayer,
     TilesetLocation,
 };
-use tiledpd::properties::PropertyValue as PVPD;
-use tiledpd::tilemap::{
+use pd_asset::properties::PropertyValue as PVPD;
+use pd_asset::tilemap::{
     ImageLayer, Layer as LayerPD, LayerData, ObjectData, ObjectLayer, ObjectShape, Tile,
 };
-use tiledpd::tilemap::{LayerCollision, Tilemap};
-use tiledpd::tileset::{TileData, Tileset};
+use pd_asset::tilemap::{LayerCollision, Tilemap};
+use pd_asset::tileset::{TileData, Tileset};
 
 pub fn convert_map(map: tiled::Map) -> Tilemap {
     let layers = map.layers().map(|layer| convert_layer(layer)).collect();
@@ -102,7 +102,7 @@ pub fn convert_layer_data(main_layer: Layer) -> LayerData {
                     std::fs::create_dir_all(output_path.parent().unwrap()).unwrap();
                     image.save(&output_path).unwrap();
 
-                    LayerData::TileLayer(tiledpd::tilemap::TileLayer {
+                    LayerData::TileLayer(pd_asset::tilemap::TileLayer {
                         width: layer.width(),
                         height: layer.height(),
                         tiles,
@@ -334,7 +334,7 @@ pub fn convert_object_shape(shape: tiled::ObjectShape) -> ObjectShape {
     }
 }
 
-pub fn convert_properties(properties: tiled::Properties) -> tiledpd::properties::Properties {
+pub fn convert_properties(properties: tiled::Properties) -> pd_asset::properties::Properties {
     properties
         .into_iter()
         .filter(|(_, v)| !is_generate_collision(v))

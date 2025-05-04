@@ -29,7 +29,7 @@ diagnostic = { path = "../diagnostic", features = ["pd"] }
 hashbrown = { version = "0.15.2", default-features = false, features = ["default-hasher"] }
 itertools = { version = "0.14.0", default-features = false }
 lz4_flex = { git = "https://github.com/PSeitz/lz4_flex.git", default-features = false }
-tiledpd = { path = "../tiledpd" }
+pd_asset = { path = "../pd_asset" }
 no_std_io2 = "0.9.0"
 parry2d = { git = "https://github.com/Niashi24/parry", branch = "bevy-support", default-features = false, features = ["required-features", "alloc"] }
 derive_more = { version = "2.0.1", default-features = false, features = ["full"] }
@@ -45,7 +45,7 @@ name = "Bouncy Bondi"
 author = "Niashi"
 version = "0.1.0"
 bundle-id = "com.niashi.bouncybondi"
-build-number = 48
+build-number = 50
 description = "TODO: Description for the Bouncy Bondi game."
 
 #content-warning = "This game contains mild realistic, violence and bloodshed."

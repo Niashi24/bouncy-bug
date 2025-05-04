@@ -10,7 +10,7 @@ use itertools::Itertools;
 use parry2d::na::{Isometry2, Point2, Vector2};
 use parry2d::query::{Contact, Ray, RayCast, RayIntersection, ShapeCastHit, ShapeCastOptions};
 use parry2d::shape::{Ball, Compound, Segment, SharedShape};
-use tiledpd::tilemap::ArchivedLayerCollision;
+use pd_asset::tilemap::ArchivedLayerCollision;
 
 #[derive(Component, Clone)]
 pub struct TileLayerCollision(pub Compound);
