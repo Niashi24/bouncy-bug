@@ -53,7 +53,9 @@ impl DeserializedMapProperties<false> {
                 // ArchivedLayerData::Group(group) => {
                 //     to_process.extend(group.layers());
                 // }
-                ArchivedLayerData::TileLayer(_) | ArchivedLayerData::ImageLayer(_) => {}
+                ArchivedLayerData::FiniteTileLayer(_) | 
+                    ArchivedLayerData::ImageLayer(_) |
+                    ArchivedLayerData::InfiniteTileLayer(_) => {}
             }
         }
 

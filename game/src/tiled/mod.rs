@@ -1,4 +1,4 @@
-use crate::rkyv::{load_compressed_archive, OwnedArchived};
+use crate::rkyv::{load_compressed_archive};
 use crate::tiled::load::{DeserializedMapProperties, DeserializedProperties};
 use alloc::borrow::Cow;
 use alloc::vec::Vec;
@@ -22,11 +22,9 @@ use core::ops::Deref;
 use derive_more::Deref;
 use no_std_io2::io::Write;
 use pd::sys::ffi::LCDBitmapFlip;
-use pd_asset::tilemap::{
-    ArchivedImageLayer, ArchivedLayer, ArchivedLayerData, ArchivedObjectLayer, ArchivedTileLayer,
-    ArchivedTilemap,
-};
+use pd_asset::tilemap::{ArchivedChunkData, ArchivedFiniteTileLayer, ArchivedImageLayer, ArchivedInfiniteTileLayer, ArchivedLayer, ArchivedLayerData, ArchivedObjectLayer, ArchivedTilemap};
 use pd_asset::tileset::{ArchivedTileData, ArchivedTileset};
+use pd_asset::archive::OwnedArchived;
 
 pub mod collision;
 pub mod export;
@@ -165,7 +163,11 @@ pub struct Layer<'map> {
 impl Layer<'_> {
     pub fn data(&self) -> LayerData {
         match &self.layer_data {
-            ArchivedLayerData::TileLayer(layer) => LayerData::TileLayer(TileLayer {
+            ArchivedLayerData::FiniteTileLayer(layer) => LayerData::FiniteTileLayer(FiniteTileLayer {
+                map: self.map,
+                data: layer,
+            }),
+            ArchivedLayerData::InfiniteTileLayer(layer) => LayerData::InfiniteTileLayer(InfiniteTileLayer {
                 map: self.map,
                 data: layer,
             }),
@@ -186,7 +188,7 @@ impl Layer<'_> {
     }
 
     // pub fn as_tile_layer(&self) -> Option<TileLayer> {
-    //     if let ArchivedLayerData::TileLayer(layer) = &self.layer_data {
+    //     if let ArchivedLayerData::FiniteTileLayer(layer) = &self.layer_data {
     //         Some(TileLayer {
     //             map: self.map,
     //             data: layer,
@@ -198,7 +200,8 @@ impl Layer<'_> {
 }
 
 pub enum LayerData<'map> {
-    TileLayer(TileLayer<'map>),
+    FiniteTileLayer(FiniteTileLayer<'map>),
+    InfiniteTileLayer(InfiniteTileLayer<'map>),
     ObjectLayer {
         map: &'map Map,
         data: &'map ArchivedObjectLayer,
@@ -207,13 +210,13 @@ pub enum LayerData<'map> {
 }
 
 #[derive(Deref)]
-pub struct TileLayer<'map> {
+pub struct FiniteTileLayer<'map> {
     map: &'map Map,
     #[deref]
-    data: &'map ArchivedTileLayer,
+    data: &'map ArchivedFiniteTileLayer,
 }
 
-impl TileLayer<'_> {
+impl FiniteTileLayer<'_> {
     pub fn tiles(&self) -> impl Iterator<Item = Option<Tile>> {
         self.data.tiles.iter().map(|tile| {
             tile.as_ref().map(|t| Tile {
@@ -223,6 +226,32 @@ impl TileLayer<'_> {
         })
     }
 }
+
+#[derive(Deref)]
+pub struct InfiniteTileLayer<'map> {
+    map: &'map Map,
+    #[deref]
+    data: &'map ArchivedInfiniteTileLayer,
+}
+
+impl InfiniteTileLayer<'_> {
+    pub fn chunks(&self) -> impl ExactSizeIterator<Item=((i32, i32), Chunk)> {
+        self.data.chunk_data()
+            .map(move |(pos, chunk)| (pos, Chunk {
+                map: self.map,
+                chunk,
+            }))
+    }
+}
+
+#[derive(Deref)]
+pub struct Chunk<'map> {
+    map: &'map Map,
+    #[deref]
+    chunk: &'map ArchivedChunkData,
+}
+
+
 
 #[derive(Deref)]
 pub struct ObjectLayer<'map> {

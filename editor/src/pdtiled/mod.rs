@@ -102,7 +102,7 @@ pub fn convert_layer_data(main_layer: Layer) -> LayerData {
                     std::fs::create_dir_all(output_path.parent().unwrap()).unwrap();
                     image.save(&output_path).unwrap();
 
-                    LayerData::TileLayer(pd_asset::tilemap::TileLayer {
+                    LayerData::FiniteTileLayer(pd_asset::tilemap::FiniteTileLayer {
                         width: layer.width(),
                         height: layer.height(),
                         tiles,
@@ -110,7 +110,13 @@ pub fn convert_layer_data(main_layer: Layer) -> LayerData {
                         image: Some(name.to_string_lossy().to_string()),
                     })
                 }
-                TileLayer::Infinite(_) => todo!("infinite layer"),
+                TileLayer::Infinite(tiles) => { 
+                    for (pos, chunk) in tiles.chunks() {
+                        dbg!(pos);
+                    }
+                    
+                    todo!("infinite tile layer")
+                },
             }
         }
         LayerType::Objects(layer) => {

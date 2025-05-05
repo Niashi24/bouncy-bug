@@ -19,10 +19,10 @@
                 2
             ],
             "scale": 1.0213,
-            "selectedLayer": 1,
+            "selectedLayer": 0,
             "viewCenter": {
-                "x": 488.5929697444433,
-                "y": 152.74649955938506
+                "x": 460.1977871340448,
+                "y": 148.829922647606
             }
         },
         "level-1.tmx": {
@@ -93,11 +93,11 @@
             "scaleInEditor": 15.52
         },
         "title-screen.edit.tmx": {
-            "scale": 2.0372222222222223,
+            "scale": 1.4007,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 173.2751568039269,
-                "y": 171.3116989364603
+                "x": 264.8675662168915,
+                "y": 172.77075747840365
             }
         }
     },
@@ -112,6 +112,7 @@
     "loadedWorlds": [
         "C:/Users/niasp/Documents/Programming/bouncy-bug/assets/test-world.world"
     ],
+    "map.fixedSize": false,
     "map.height": 15,
     "map.lastUsedExportFilter": "Tiled map files (*.tmx *.xml)",
     "map.lastUsedFormat": "tmx",

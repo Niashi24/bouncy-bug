@@ -87,7 +87,7 @@ pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
             }
 
             match layer.data() {
-                LayerData::TileLayer(tile_layer) => {
+                LayerData::FiniteTileLayer(tile_layer) => {
                     if let Some(collision) = tile_layer.layer_collision.as_ref() {
                         layer_entity.insert(TileLayerCollision::from(collision));
                     }
@@ -174,6 +174,7 @@ pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
                         image_layer.source.to_string(),
                     );
                 }
+                LayerData::InfiniteTileLayer(_) => {todo!("infinite tile layer")}
             }
         }
     });

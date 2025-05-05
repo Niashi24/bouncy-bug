@@ -173,7 +173,6 @@ fn test_ray(
 
 fn control_job(
     q_test: Query<(Entity, &MapHandle)>,
-    mut jobs: ResMut<Jobs>,
     mut commands: Commands,
     input: Res<ButtonInput<PlaydateButton>>,
     debug: Res<Debug>,

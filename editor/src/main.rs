@@ -12,9 +12,10 @@ use std::process::Command;
 use std::str::FromStr;
 use std::sync::LazyLock;
 use gif::{DisposalMethod, ExtensionData, Repeat};
-use image::{Rgb, Rgba, RgbaImage};
+use image::{GenericImage, Rgb, Rgba, RgbaImage};
 use pd_asset::dependencies::AddDependenciesMut;
 use toml_edit::{Item, Table, value};
+use pd_asset::gif::Gif;
 
 fn main() -> anyhow::Result<()> {
     let game_toml = std::fs::read_to_string("game/Cargo.toml")?;
@@ -69,6 +70,8 @@ fn main() -> anyhow::Result<()> {
     }
 
     std::fs::write("game/Cargo.toml", game_toml.to_string())?;
+
+    // dbg!(generate_transition());
 
     Ok(())
     // run_game(true)
@@ -343,8 +346,7 @@ pub fn process_default(path: &Path) {
     // std::fs::create_dir_all(path.parent())
 }
 
-#[test]
-fn generate_transition() {
+fn generate_transition() -> Gif {
     let fps = 50.0;
     let length = 0.4;
     
@@ -359,29 +361,12 @@ fn generate_transition() {
     }
     
     // let mut frames = Vec::new();
-    let mut image = File::create("../assets/export/screen-transition-basic.gif").unwrap();
-    let mut encoder = gif::Encoder::new(
-        &mut image,
-        400,
-        240,
-        &[215, 212, 204, 50, 47, 41]
-    ).unwrap();
-    
-    let delay = (1.0 / fps * 1000.0 / 10.0) as u16;
-    dbg!(delay);
-    encoder.write_extension(ExtensionData::new_control_ext(
-        delay,
-        DisposalMethod::Any,
-        false,
-        None,
-    )).unwrap();
-    
-    encoder.set_repeat(Repeat::Infinite).unwrap();
+    let mut full_image = RgbaImage::new(n as u32 * 400, 240);
+    let path = "screen-transition-ease-out-table-400-240.png";
     
     for i in 0..n {
         let t = (i as f32) / ((n - 1) as f32);
         let width = (curve(t) * (400.0 + 240.0 * 2.0)).round() as u32;
-        
         
         let image = RgbaImage::from_fn(400, 240, |x, y| {
             if x + 2 * y < width {
@@ -391,13 +376,13 @@ fn generate_transition() {
             }
         });
 
-        let mut data = image.into_vec();
-        
-        let frame = gif::Frame::from_rgba(400, 240, &mut data);
-        
-        encoder.write_frame(&frame).unwrap();
-        // frames.push(frame);
+        full_image.copy_from(&image, i as u32 * 400, 0).unwrap();
     }
     
-    
+    full_image.save(format!("assets/export/{}", path)).unwrap();
+
+    Gif {
+        image_path: path.to_string(),
+        fps,
+    }
 }

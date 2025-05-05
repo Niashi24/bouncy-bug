@@ -1,11 +1,16 @@
-﻿use crate::dependencies::{AddDependencies, AddDependenciesMut};
+﻿use alloc::boxed::Box;
+use crate::dependencies::{AddDependencies, AddDependenciesMut};
 use crate::properties::Properties;
 use alloc::string::String;
 use alloc::vec::Vec;
 use bytecheck::CheckBytes;
 use core::num::NonZeroU8;
-use hashbrown::HashSet;
+use core::ops::Deref;
+use hashbrown::{HashMap, HashSet};
 use rkyv::{Archive, Deserialize, Portable, Serialize};
+use rkyv::option::ArchivedOption;
+use rkyv::primitive::ArchivedI32;
+use rkyv::tuple::ArchivedTuple2;
 
 #[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
 #[rkyv(derive(Debug))]
@@ -66,7 +71,8 @@ impl AddDependenciesMut for Layer {
 #[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
 #[rkyv(derive(Debug))]
 pub enum LayerData {
-    TileLayer(TileLayer),
+    FiniteTileLayer(FiniteTileLayer),
+    InfiniteTileLayer(InfiniteTileLayer),
     ObjectLayer(ObjectLayer),
     ImageLayer(ImageLayer),
     // Group Layer
@@ -75,9 +81,10 @@ pub enum LayerData {
 impl AddDependencies for ArchivedLayerData {
     fn add_dependencies<'a: 'b, 'b>(&'a self, dependencies: &mut HashSet<&'b str>) {
         match self {
-            Self::TileLayer(layer) => layer.add_dependencies(dependencies),
+            Self::FiniteTileLayer(layer) => layer.add_dependencies(dependencies),
             Self::ObjectLayer(layer) => layer.add_dependencies(dependencies),
             Self::ImageLayer(layer) => layer.add_dependencies(dependencies),
+            Self::InfiniteTileLayer(layer) => layer.add_dependencies(dependencies),
         }
     }
 }
@@ -85,9 +92,10 @@ impl AddDependencies for ArchivedLayerData {
 impl AddDependenciesMut for LayerData {
     fn add_dependencies_mut<'a: 'b, 'b>(&'a mut self, dependencies: &mut Vec<&'b mut String>) {
         match self {
-            Self::TileLayer(layer) => layer.add_dependencies_mut(dependencies),
+            Self::FiniteTileLayer(layer) => layer.add_dependencies_mut(dependencies),
             Self::ObjectLayer(layer) => layer.add_dependencies_mut(dependencies),
             Self::ImageLayer(layer) => layer.add_dependencies_mut(dependencies),
+            Self::InfiniteTileLayer(layer) => layer.add_dependencies_mut(dependencies),
         }
     }
 }
@@ -174,7 +182,7 @@ impl AddDependenciesMut for ImageLayer {
 
 #[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
 #[rkyv(derive(Debug))]
-pub struct TileLayer {
+pub struct FiniteTileLayer {
     pub width: u32,
     pub height: u32,
     pub tiles: Vec<Option<Tile>>,
@@ -185,7 +193,7 @@ pub struct TileLayer {
     pub layer_collision: Option<LayerCollision>,
 }
 
-impl AddDependencies for ArchivedTileLayer {
+impl AddDependencies for ArchivedFiniteTileLayer {
     fn add_dependencies<'a: 'b, 'b>(&'a self, dependencies: &mut HashSet<&'b str>) {
         if let Some(image) = self.image.as_ref() {
             dependencies.insert(image);
@@ -193,11 +201,131 @@ impl AddDependencies for ArchivedTileLayer {
     }
 }
 
-impl AddDependenciesMut for TileLayer {
+impl AddDependenciesMut for FiniteTileLayer {
     fn add_dependencies_mut<'a: 'b, 'b>(&'a mut self, dependencies: &mut Vec<&'b mut String>) {
         if let Some(image) = self.image.as_mut() {
             dependencies.push(image);
         }
+    }
+}
+
+#[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
+#[rkyv(derive(Debug))]
+pub struct InfiniteTileLayer {
+    pub chunks: HashMap<(i32, i32), ChunkData>,
+}
+
+impl AddDependenciesMut for InfiniteTileLayer {
+    fn add_dependencies_mut<'a: 'b, 'b>(&'a mut self, dependencies: &mut Vec<&'b mut String>) {
+        self.chunks.iter_mut()
+            .for_each(|(_, chunk)| chunk.add_dependencies_mut(dependencies));
+    }
+}
+
+impl AddDependencies for ArchivedInfiniteTileLayer {
+    fn add_dependencies<'a: 'b, 'b>(&'a self, dependencies: &mut HashSet<&'b str>) {
+        self.chunks.iter()
+            .for_each(|(_, chunk)| chunk.add_dependencies(dependencies));
+    }
+}
+
+impl ArchivedInfiniteTileLayer {
+
+
+    /// Obtains the tile data present at the position given.
+    ///
+    /// If the position given is invalid or the position is empty, this function will return [`None`].
+    ///
+    /// If you want to get a [`Tile`](`crate::Tile`) instead, use [`InfiniteTileLayer::get_tile()`].
+    pub fn get_tile_data(&self, x: i32, y: i32) -> Option<&Tile> {
+        let chunk_pos = ArchivedChunkData::tile_to_chunk_pos(x, y);
+        let pos = ArchivedTuple2(ArchivedI32::from_native(chunk_pos.0), ArchivedI32::from_native(chunk_pos.1));
+        self.chunks
+            .get(&pos)
+            .and_then(|chunk| {
+                let relative_pos = (
+                    x - chunk_pos.0 * ChunkData::WIDTH as i32,
+                    y - chunk_pos.1 * ChunkData::HEIGHT as i32,
+                );
+                let chunk_index =
+                    (relative_pos.0 + relative_pos.1 * ChunkData::WIDTH as i32) as usize;
+                chunk.tiles.deref().get(chunk_index).map(ArchivedOption::as_ref)
+            })
+            .flatten()
+    }
+
+    /// Returns an iterator over only the data part of the chunks of this tile layer.
+    ///
+    /// In 99.99% of cases you'll want to use [`InfiniteTileLayer::chunks()`] instead; Using this method is only
+    /// needed if you *only* require the tile data of the chunks (and no other utilities provided by
+    /// the map-wrapped [`LayerTile`]), and you are in dire need for that extra bit of performance.
+    ///
+    /// This iterator doesn't have any particular order.
+    #[inline]
+    pub fn chunk_data(&self) -> impl ExactSizeIterator<Item = ((i32, i32), &ArchivedChunkData)> {
+        self.chunks.iter().map(|(pos, chunk)| {
+            let pos = (pos.0.to_native(), pos.1.to_native());
+            (pos, chunk)
+        })
+    }
+}
+
+#[derive(Clone, PartialEq, Debug, Archive, Deserialize, Serialize)]
+#[rkyv(derive(Debug))]
+pub struct ChunkData {
+    pub tiles: Box<[Option<Tile>; ChunkData::TILE_COUNT]>,
+    pub collision: Option<LayerCollision>,
+    pub image: Option<String>,
+}
+
+impl AddDependenciesMut for ChunkData {
+    fn add_dependencies_mut<'a: 'b, 'b>(&'a mut self, dependencies: &mut Vec<&'b mut String>) {
+        if let Some(image) = self.image.as_mut() {
+            dependencies.push(image);
+        }
+    }
+}
+
+impl AddDependencies for ArchivedChunkData {
+    fn add_dependencies<'a: 'b, 'b>(&'a self, dependencies: &mut HashSet<&'b str>) {
+        if let Some(image) = self.image.as_ref() {
+            dependencies.insert(image.as_str());
+        }
+    }
+}
+
+impl ChunkData {
+    /// Infinite layer chunk width. This constant might change between versions, not counting as a
+    /// breaking change.
+    pub const WIDTH: u32 = 16;
+    /// Infinite layer chunk height. This constant might change between versions, not counting as a
+    /// breaking change.
+    pub const HEIGHT: u32 = 16;
+    /// Infinite layer chunk tile count. This constant might change between versions, not counting
+    /// as a breaking change.
+    pub const TILE_COUNT: usize = Self::WIDTH as usize * Self::HEIGHT as usize;
+}
+
+impl ArchivedChunkData {
+    /// Obtains the tile data present at the position given relative to the chunk's top-left-most tile.
+    ///
+    /// If the position given is invalid or the position is empty, this function will return [`None`].
+    ///
+    /// If you want to get a [`LayerTile`](`crate::LayerTile`) instead, use [`Chunk::get_tile()`].
+    pub fn get_tile_data(&self, x: i32, y: i32) -> Option<&Tile> {
+        if x < ChunkData::WIDTH as i32 && y < ChunkData::HEIGHT as i32 && x >= 0 && y >= 0 {
+            self.tiles[x as usize + y as usize * ChunkData::WIDTH as usize].as_ref()
+        } else {
+            None
+        }
+    }
+
+    /// Returns the position of the chunk that contains the given tile position.
+    pub fn tile_to_chunk_pos(x: i32, y: i32) -> (i32, i32) {
+        (
+            x / (ChunkData::WIDTH as i32),
+            y / (ChunkData::HEIGHT as i32),
+        )
     }
 }
 
