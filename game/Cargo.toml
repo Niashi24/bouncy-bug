@@ -24,6 +24,7 @@ bevy_platform = { version = "0.16", default-features = false, features = ["alloc
 bevy_playdate = { path = "../bevy_playdate" }
 bevy_reflect = { version = "0.16", default-features = false, features = ["glam", "smol_str", "smallvec"] }
 bevy_time = { version = "0.16", default-features = false }
+bevy_state = { version = "0.16.0", default-features = false, features = ["bevy_app"] }
 
 diagnostic = { path = "../diagnostic", features = ["pd"] }
 hashbrown = { version = "0.15.2", default-features = false, features = ["default-hasher"] }
@@ -45,7 +46,7 @@ name = "Bouncy Bondi"
 author = "Niashi"
 version = "0.1.0"
 bundle-id = "com.niashi.bouncybondi"
-build-number = 60
+build-number = 92
 description = "TODO: Description for the Bouncy Bondi game."
 
 #content-warning = "This game contains mild realistic, violence and bloodshed."
@@ -61,6 +62,7 @@ launch-sound-path = "sfx/jump"
 "assets/tileset-table-24-24.png" = "../assets/export/tileset-table-24-24.png"
 "assets/title-screen-layer-(1).png" = "../assets/export/title-screen-layer-(1).png"
 "assets/title-screen.tmb" = "../assets/export/title-screen.tmb"
+"assets/transition-simple.png" = "../assets/export/transition-simple.png"
 
 #"img/system/" = "${PLAYDATE_SDK_PATH}/Examples/Game Template/Source/SystemAssets/*.png"
 #"sfx/jump.wav" = "${PLAYDATE_SDK_PATH}/Examples/Level 1-1/Source/sfx/jump.wav"

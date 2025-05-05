@@ -6,16 +6,14 @@ use bevy_app::{App, Last, Plugin, Startup};
 use bevy_ecs::change_detection::ResMut;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::event::EventReader;
-use bevy_ecs::prelude::{Commands, Component, EntityCommands, IntoScheduleConfigs, Query};
+use bevy_ecs::prelude::{Commands, Component, EntityCommands, IntoScheduleConfigs, Query, Trigger};
 use bevy_ecs::reflect::AppTypeRegistry;
 use bevy_ecs::system::Res;
 use bevy_ecs::world::EntityWorldMut;
 use bevy_platform::sync::Arc;
 use bevy_playdate::asset::{AssetAsync, BitmapAsset, BitmapRef, BitmapTableAsset, ResAssetCache};
 use bevy_playdate::file::{BufferedWriter, FileHandle};
-use bevy_playdate::jobs::{
-    AsyncLoadCtx, GenJobExtensions, JobFinished, JobHandle, Jobs, JobsScheduler,
-};
+use bevy_playdate::jobs::{AsyncLoadCtx, FinishedJobs, GenJobExtensions, JobFinished, JobHandle, Jobs, JobsScheduler};
 use bevy_playdate::sprite::Sprite;
 use bevy_reflect::Reflect;
 use core::ops::Deref;
@@ -323,10 +321,7 @@ pub trait AssetLoader: 'static + Send + Sync {
 }
 
 pub fn add_loader<A: AssetLoader>(app: &mut App) {
-    app.add_systems(
-        Last,
-        LoadingAsset::<A>::try_load_system.after(Jobs::run_jobs_system),
-    );
+    app.add_observer(LoadingAsset::<A>::try_load_system);
 }
 
 #[derive(Component, Default)]
@@ -341,23 +336,23 @@ pub struct LoadingAsset<A: AssetLoader> {
 
 impl<A: AssetLoader> LoadingAsset<A> {
     pub fn try_load_system(
+        trigger: Trigger<JobFinished>,
         q_loading: Query<(Entity, &Self)>,
         mut commands: Commands,
-        mut jobs: ResMut<Jobs>,
-        mut finished_events: EventReader<JobFinished>,
+        mut jobs: ResMut<FinishedJobs>,
+        // mut finished_events: EventReader<JobFinished>,
     ) {
-        for job in finished_events.read() {
-            if let Some((e, job)) = q_loading
-                .iter()
-                .find(|(_, loading)| loading.job.id() == job.job_id)
-            {
-                let result = jobs.try_claim(&job.job).expect("claim result from Jobs");
+        let job = trigger.event();
+        if let Some((e, job)) = q_loading
+            .iter()
+            .find(|(_, loading)| loading.job.id() == job.job_id)
+        {
+            let result = jobs.try_claim(&job.job).expect("claim result from Jobs");
 
-                let mut entity = commands.entity(e);
-                // removes both LoadingAsset and Loading
-                entity.remove_with_requires::<Self>();
-                job.loader.on_finish_load(&mut entity, result);
-            }
+            let mut entity = commands.entity(e);
+            // removes both LoadingAsset and Loading
+            entity.remove_with_requires::<Self>();
+            job.loader.on_finish_load(&mut entity, result);
         }
     }
 }
@@ -366,6 +361,7 @@ impl<A: AssetLoader> LoadingAsset<A> {
 pub struct SpriteLoader {
     pub center: [f32; 2],
     pub z_index: i16,
+    pub ignore_draw_offset: bool,
 }
 
 impl SpriteLoader {
@@ -373,6 +369,7 @@ impl SpriteLoader {
         let sprite = Sprite::new_from_bitmap(image, LCDBitmapFlip::kBitmapUnflipped);
         sprite.set_center(self.center[0], self.center[1]);
         sprite.set_z_index(self.z_index);
+        sprite.set_ignores_draw_offset(self.ignore_draw_offset);
 
         sprite
     }
@@ -383,6 +380,7 @@ impl Default for SpriteLoader {
         Self {
             center: [0.5; 2],
             z_index: 0,
+            ignore_draw_offset: false,
         }
     }
 }

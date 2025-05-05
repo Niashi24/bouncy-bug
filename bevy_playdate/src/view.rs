@@ -39,6 +39,10 @@ pub struct Camera {
 pub struct DrawOffset(pub IVec2);
 
 impl DrawOffset {
+    #[inline]
+    pub fn top_left(&self) -> IVec2 {
+        -self.0
+    }
     /// returns the current world position of the bottom right pixel on the screen
     pub fn bottom_right(&self) -> IVec2 {
         IVec2::new(399, 239) - self.0

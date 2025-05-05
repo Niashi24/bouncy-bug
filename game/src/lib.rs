@@ -8,6 +8,7 @@ extern crate playdate as pd;
 pub mod game;
 pub mod rkyv;
 pub mod tiled;
+mod state;
 
 use crate::game::GamePlugin;
 use bevy_app::App;

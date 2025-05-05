@@ -22,9 +22,11 @@ pub struct JobPlugin;
 
 impl Plugin for JobPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<Jobs>().init_resource::<JobsScheduler>();
+        app
+            .init_resource::<Jobs>()
+            .init_resource::<JobsScheduler>()
+            .init_resource::<FinishedJobs>();
         app.add_systems(Last, Jobs::run_jobs_system);
-        app.add_event::<JobFinished>();
     }
 }
 
@@ -99,13 +101,12 @@ pub struct Jobs {
     /// Minimum number of jobs to run per frame
     pub min_jobs: usize,
     jobs: BinaryHeap<RunningJob>,
-    finished: HashMap<JobId, FinishedJob>,
     to_cancel: Vec<RunningJob>,
 }
 
 type FinishedJob = Result<Box<dyn Any>, Box<dyn Any>>;
 
-#[derive(Event)]
+#[derive(Event, Copy, Clone, Eq, PartialEq)]
 pub struct JobFinished {
     // pub handle: JobHandle<>
     pub job_id: JobId,
@@ -119,32 +120,52 @@ impl Default for Jobs {
         Self {
             min_jobs: 5,
             jobs: BinaryHeap::new(),
-            finished: Default::default(),
             to_cancel: vec![],
         }
     }
 }
 
+#[derive(Resource, Default)]
+pub struct FinishedJobs {
+    finished: HashMap<JobId, FinishedJob>,
+}
+
+impl FinishedJobs {
+    pub fn try_claim<Work: Any, Success: Any, Error: Any>(
+        &mut self,
+        job: &JobHandle<Work, Success, Error>,
+    ) -> Option<Result<Success, Error>> {
+        match self.finished.remove(&job.id) {
+            None => None,
+            Some(Ok(val)) => Some(Ok(*val.downcast().unwrap())),
+            Some(Err(val)) => Some(Err(*val.downcast().unwrap())),
+        }
+    }
+}
+
+unsafe impl Send for FinishedJobs {}
+unsafe impl Sync for FinishedJobs {}
+
 pub type Job<Work, Success, Error> = BoxedSystem<In<Work>, WorkResult<Work, Success, Error>>;
 
 impl Jobs {
-    pub fn progress<Work: Any, Success: Any, Error: Any>(
-        &self,
-        job: &JobHandle<Work, Success, Error>,
-    ) -> Option<JobStatusRef<Work, Success, Error>> {
-        if let Some(job) = self.finished.get(&job.id) {
-            return Some(match job {
-                Ok(val) => JobStatusRef::Success(val.downcast_ref().unwrap()),
-                Err(val) => JobStatusRef::Error(val.downcast_ref().unwrap()),
-            });
-        }
-
-        if let Some(job) = self.jobs.iter().find(|j| j.id == job.id) {
-            return Some(JobStatusRef::InProgress(job.work.downcast_ref().unwrap()));
-        }
-
-        None
-    }
+    // pub fn progress<Work: Any, Success: Any, Error: Any>(
+    //     &self,
+    //     job: &JobHandle<Work, Success, Error>,
+    // ) -> Option<JobStatusRef<Work, Success, Error>> {
+    //     if let Some(job) = self.finished.get(&job.id) {
+    //         return Some(match job {
+    //             Ok(val) => JobStatusRef::Success(val.downcast_ref().unwrap()),
+    //             Err(val) => JobStatusRef::Error(val.downcast_ref().unwrap()),
+    //         });
+    //     }
+    // 
+    //     if let Some(job) = self.jobs.iter().find(|j| j.id == job.id) {
+    //         return Some(JobStatusRef::InProgress(job.work.downcast_ref().unwrap()));
+    //     }
+    // 
+    //     None
+    // }
 
     // fn understarted_jobs(&mut self) -> (&mut Vec<UnstartedJob>, &mut BinaryHeap<RunningJob>) {
     //     (&mut self.unstarted, &mut self.jobs)
@@ -216,15 +237,15 @@ impl Jobs {
                 skip_buffer.push(job);
             }
             ErasedWorkStatus::Success(val) => {
-                self.finished.insert(job.id, Ok(val));
-                world.send_event(JobFinished { job_id: job.id });
+                world.resource_mut::<FinishedJobs>().finished.insert(job.id, Ok(val));
+                world.trigger(JobFinished { job_id: job.id });
                 world
                     .unregister_system(job.job)
                     .expect("unregister completed job (success)");
             }
             ErasedWorkStatus::Error(val) => {
-                self.finished.insert(job.id, Err(val));
-                world.send_event(JobFinished { job_id: job.id });
+                world.resource_mut::<FinishedJobs>().finished.insert(job.id, Err(val));
+                world.trigger(JobFinished { job_id: job.id });
                 world
                     .unregister_system(job.job)
                     .expect("unregister completed job (error)");
@@ -238,10 +259,6 @@ impl Jobs {
         &mut self,
         job: &JobHandle<Work, Success, Error>,
     ) {
-        if self.try_claim(job).is_some() {
-            return;
-        }
-
         let mut v = core::mem::take(&mut self.jobs).into_vec();
         if let Some((i, _)) = v.iter().enumerate().find(|(_, j)| j.id == job.id) {
             let item = v.swap_remove(i);
@@ -250,22 +267,10 @@ impl Jobs {
         self.jobs = BinaryHeap::from(v);
     }
 
-    pub fn try_claim<Work: Any, Success: Any, Error: Any>(
-        &mut self,
-        job: &JobHandle<Work, Success, Error>,
-    ) -> Option<Result<Success, Error>> {
-        match self.finished.remove(&job.id) {
-            None => None,
-            Some(Ok(val)) => Some(Ok(*val.downcast().unwrap())),
-            Some(Err(val)) => Some(Err(*val.downcast().unwrap())),
-        }
-    }
-
     pub fn clear_all(&mut self) {
         for job in self.jobs.drain() {
             self.to_cancel.push(job);
         }
-        self.finished.clear();
     }
 }
 

@@ -1,4 +1,5 @@
 ﻿assets = [
     "level-1.tmx",
-    "title-screen.tmx"
+    "title-screen.tmx",
+    "transition-simple.png",
 ]

@@ -98,6 +98,7 @@ pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
                             SpriteLoader {
                                 center: [0.0; 2],
                                 z_index,
+                                ignore_draw_offset: false,
                             },
                             10,
                             image.to_string(),
@@ -169,6 +170,7 @@ pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
                         SpriteLoader {
                             center: [0.0; 2],
                             z_index,
+                            ignore_draw_offset: false,
                         },
                         10,
                         image_layer.source.to_string(),
