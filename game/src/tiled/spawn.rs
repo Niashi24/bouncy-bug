@@ -12,6 +12,7 @@ use bevy_playdate::transform::Transform;
 use hashbrown::HashMap;
 use bevy_playdate::visibility::Visibility;
 use pd_asset::tilemap::ArchivedObjectShape;
+use crate::tiled::job::BatchCommands;
 
 /// Contains a reference to the map data.
 /// 
@@ -32,7 +33,9 @@ impl TileLayer {
     }
 }
 
-pub fn spawn(entity_commands: &mut EntityCommands, map: Arc<Map>) {
+pub fn spawn(entity_commands: &mut BatchCommands, entity: Entity, map: Arc<Map>) {
+    let mut commands = entity_commands.commands();
+    let mut entity_commands = commands.entity(entity);
     entity_commands.insert(MapHandle(Arc::clone(&map)));
     // spawn all objects and create object-id-to-entity map
     let objects = {

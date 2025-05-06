@@ -4,12 +4,12 @@ use alloc::borrow::Cow;
 use alloc::vec::Vec;
 use bevy_app::{App, Last, Plugin, Startup};
 use bevy_ecs::change_detection::ResMut;
-use bevy_ecs::entity::Entity;
+use bevy_ecs::entity::{Entities, Entity};
 use bevy_ecs::event::EventReader;
 use bevy_ecs::prelude::{Commands, Component, EntityCommands, IntoScheduleConfigs, Query, Trigger};
 use bevy_ecs::reflect::AppTypeRegistry;
-use bevy_ecs::system::Res;
-use bevy_ecs::world::EntityWorldMut;
+use bevy_ecs::system::{Res, RunSystemOnce};
+use bevy_ecs::world::{CommandQueue, EntityWorldMut};
 use bevy_platform::sync::Arc;
 use bevy_playdate::asset::{AssetAsync, BitmapAsset, BitmapRef, BitmapTableAsset, ResAssetCache};
 use bevy_playdate::file::{BufferedWriter, FileHandle};
@@ -266,6 +266,7 @@ pub struct ObjectLayer<'map> {
 // }
 
 pub use pd_asset::tilemap::Tile as TileData;
+use crate::tiled::job::{BatchCommands};
 
 #[derive(Deref)]
 pub struct Tile<'map> {
@@ -315,7 +316,8 @@ pub trait AssetLoader: 'static + Send + Sync {
 
     fn on_finish_load(
         &self,
-        commands: &mut EntityCommands,
+        commands: &mut BatchCommands,
+        entity: Entity,
         result: Result<Arc<Self::Asset>, <<Self as AssetLoader>::Asset as AssetAsync>::Error>,
     );
 }
@@ -338,9 +340,9 @@ impl<A: AssetLoader> LoadingAsset<A> {
     pub fn try_load_system(
         trigger: Trigger<JobFinished>,
         q_loading: Query<(Entity, &Self)>,
-        mut commands: Commands,
         mut jobs: ResMut<FinishedJobs>,
-        // mut finished_events: EventReader<JobFinished>,
+        mut scheduler: ResMut<JobsScheduler>,
+        mut commands: BatchCommands,
     ) {
         let job = trigger.event();
         if let Some((e, job)) = q_loading
@@ -348,11 +350,9 @@ impl<A: AssetLoader> LoadingAsset<A> {
             .find(|(_, loading)| loading.job.id() == job.job_id)
         {
             let result = jobs.try_claim(&job.job).expect("claim result from Jobs");
-
-            let mut entity = commands.entity(e);
             // removes both LoadingAsset and Loading
-            entity.remove_with_requires::<Self>();
-            job.loader.on_finish_load(&mut entity, result);
+            commands.commands().entity(e).remove_with_requires::<Self>();
+            job.loader.on_finish_load(&mut commands, e, result);
         }
     }
 }
@@ -390,12 +390,13 @@ impl AssetLoader for SpriteLoader {
 
     fn on_finish_load(
         &self,
-        commands: &mut EntityCommands,
+        commands: &mut BatchCommands,
+        entity: Entity,
         result: Result<Arc<Self::Asset>, <<Self as AssetLoader>::Asset as AssetAsync>::Error>,
     ) {
         let image = result.unwrap();
-
-        commands.insert(self.to_sprite(image.into()));
+        commands.commands().entity(entity)
+            .insert(self.to_sprite(image.into()));
     }
 }
 
@@ -406,10 +407,11 @@ impl AssetLoader for MapLoader {
 
     fn on_finish_load(
         &self,
-        commands: &mut EntityCommands,
+        commands: &mut BatchCommands,
+        entity: Entity,
         result: Result<Arc<Self::Asset>, <<Self as AssetLoader>::Asset as AssetAsync>::Error>,
     ) {
-        spawn::spawn(commands, result.unwrap());
+        spawn::spawn(commands, entity, result.unwrap());
     }
 }
 
@@ -434,10 +436,10 @@ impl<'a> JobCommandsExt for EntityCommands<'a> {
             if let Some(x) = world.resource::<ResAssetCache>().0.try_read().unwrap()
                 .get::<A::Asset>(&path) {
                 let id = world.id();
-                world.world_scope(move |w| {
-                    let mut commands = w.commands();
-                    loader.on_finish_load(&mut commands.entity(id), Ok(x));
-                })
+                let world = world.into_world_mut();
+                world.run_system_once(move |mut commands: BatchCommands| {
+                    loader.on_finish_load(&mut commands, id, Ok(x.clone()));
+                });
             } else {
                 let job = world
                     .resource_mut::<JobsScheduler>()
@@ -460,12 +462,13 @@ impl AssetLoader for SpriteTableLoader {
 
     fn on_finish_load(
         &self,
-        commands: &mut EntityCommands,
+        commands: &mut BatchCommands,
+        entity: Entity,
         result: Result<Arc<Self::Asset>, <<Self as AssetLoader>::Asset as AssetAsync>::Error>,
     ) {
         let table = result.unwrap();
         let image = BitmapRef::from_table(table, self.index);
 
-        commands.insert(self.sprite_loader.to_sprite(image));
+        commands.commands().entity(entity).insert(self.sprite_loader.to_sprite(image));
     }
 }

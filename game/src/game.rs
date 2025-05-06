@@ -13,7 +13,7 @@ use bevy_ecs::world::DeferredWorld;
 use bevy_input::ButtonInput;
 use bevy_math::{Rot2, Vec2};
 use bevy_reflect::Reflect;
-use bevy_state::prelude::{in_state, NextState, OnEnter, OnExit};
+use bevy_state::prelude::{in_state, NextState, OnEnter, OnExit, State};
 use bevy_playdate::debug::{in_debug, Debug};
 use bevy_playdate::input::{CrankInput, PlaydateButton};
 use bevy_playdate::jobs::{Jobs, JobsScheduler};
@@ -34,6 +34,7 @@ use bevy_playdate::visibility::Visibility;
 use diagnostic::dbg;
 use crate::state::LoadingState;
 use crate::tiled::export::PathField;
+use crate::tiled::job::BatchCommands;
 
 pub struct GamePlugin;
 
@@ -63,6 +64,8 @@ impl Plugin for GamePlugin {
         //     .add_systems(OnExit(LoadingState::EndLoading), || println!("exit start loading"))
         //     .add_systems(OnEnter(LoadingState::NotLoading), || println!("enter start loading"))
         //     .add_systems(OnExit(LoadingState::NotLoading), || println!("exit start loading"));
+        app
+            .add_plugins(crate::tiled::job::BatchQueuePlugin);
         
         app
             .add_plugins(crate::state::StatesPlugin)
@@ -146,10 +149,13 @@ fn move_screen_transition(
     let target_out = 1040.0;
     
     fn eval(t: f32, start: f32, end: f32) -> f32 {
+        // bevy_math::ops:
+        // let t = (1.0 - (t - 1.0).powi(2)).sqrt();
+        let t = bevy_math::ops::sin(t * core::f32::consts::FRAC_PI_2);
         bevy_math::FloatExt::lerp(start, end, t)
     }
     
-    let transition_time = 0.5;
+    let transition_time = 0.25;
     
     match &mut transition.state {
         ScreenTransitionState::Inactive => {}
@@ -289,29 +295,30 @@ fn spawn_despawn_map(
     q_test: Query<(Entity, &MapHandle)>,
     mut commands: Commands,
 ) {
+
+    for (e, _) in q_test.iter() {
+        commands.entity(e).despawn();
+    }
     commands.spawn((
         Name::new("Level 1"),
         Transform::default(),
     ))
         .insert_loading_asset(MapLoader, 0, "assets/level-1.tmb");
-
-    for (e, _) in q_test.iter() {
-        commands.entity(e).despawn();
-    }
 }
 
 fn control_job(
     input: Res<ButtonInput<PlaydateButton>>,
     debug: Res<Debug>,
     assets: Res<ResAssetCache>,
-    mut loading_state: ResMut<NextState<LoadingState>>,
+    loading_state: Res<State<LoadingState>>,
+    mut next_state: ResMut<NextState<LoadingState>>,
 ) {
     if input.just_pressed(PlaydateButton::Down) && debug.enabled {
         assets.0.try_read().unwrap().debug_loaded();
     }
     
-    if input.just_pressed(PlaydateButton::A) {
-        loading_state.set(LoadingState::StartLoading);
+    if input.just_pressed(PlaydateButton::A) && *loading_state.get() == LoadingState::NotLoading {
+        next_state.set(LoadingState::StartLoading);
     }
 }
 
@@ -338,9 +345,14 @@ pub struct MapLoadLoader;
 impl AssetLoader for MapLoadLoader {
     type Asset = Map;
 
-    fn on_finish_load(&self, commands: &mut EntityCommands, result: Result<Arc<Self::Asset>, <<Self as AssetLoader>::Asset as AssetAsync>::Error>) {
+    fn on_finish_load(
+        &self,
+        commands: &mut BatchCommands,
+        entity: Entity,
+        result: Result<Arc<Self::Asset>, <<Self as AssetLoader>::Asset as AssetAsync>::Error>,
+    ) {
         match result {
-            Ok(map) => { commands.insert(MapHandle(map)); },
+            Ok(map) => { commands.commands().entity(entity).insert(MapHandle(map)); },
             Err(err) => {
                 dbg!(err);
             }
