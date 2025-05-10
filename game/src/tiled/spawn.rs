@@ -33,20 +33,21 @@ impl TileLayer {
     }
 }
 
-pub fn spawn(entity_commands: &mut BatchCommands, entity: Entity, map: Arc<Map>) {
-    let mut commands = entity_commands.commands();
-    let mut entity_commands = commands.entity(entity);
-    entity_commands.insert(MapHandle(Arc::clone(&map)));
+pub fn spawn(batch_commands: &mut BatchCommands, map_entity: Entity, map: Arc<Map>) {
+    batch_commands.commands().entity(map_entity)
+        .insert(MapHandle(Arc::clone(&map)));
     // spawn all objects and create object-id-to-entity map
     let objects = {
         let mut objects: HashMap<u32, Entity> = HashMap::new();
         let mut entity_name: Vec<(Entity, _)> = Vec::new();
-
+        
+        let mut object_entity_commands = batch_commands.commands();
         for layer in map.layers() {
             if let LayerData::ObjectLayer { data, .. } = layer.data() {
                 for obj in data.objects.iter() {
                     let id = obj.id.to_native();
-                    let entity = entity_commands.commands_mut().spawn_empty().id();
+                    
+                    let entity = object_entity_commands.spawn_empty().id();
                     objects.insert(id, entity);
                     // optimization, insert batch
                     entity_name.push((
@@ -61,7 +62,7 @@ pub fn spawn(entity_commands: &mut BatchCommands, entity: Entity, map: Arc<Map>)
             }
         }
 
-        entity_commands.commands_mut().insert_batch(entity_name);
+        batch_commands.commands().insert_batch(entity_name);
 
         objects
     };
@@ -69,118 +70,117 @@ pub fn spawn(entity_commands: &mut BatchCommands, entity: Entity, map: Arc<Map>)
     let mut hydrated = map.map.properties.clone().hydrate(&objects);
     
     for component in hydrated.map.properties {
-        entity_commands.insert_reflect(component);
+        batch_commands.commands().entity(map_entity).insert_reflect(component);
     }
     
     let mut z_index = 0;
 
-    entity_commands.with_children(|commands| {
-        for layer in map.layers() {
-            let mut layer_entity = commands.spawn((
-                Name::new(layer.name.to_string()),
-                Transform::from_xy(layer.x.to_native(), layer.y.to_native()),
-                Visibility::inherited_or_hidden(layer.visible),
-            ));
-            let reflect = hydrated.layers.remove(&layer.id.to_native()).unwrap();
+    for layer in map.layers() {
+        let mut layer_id = batch_commands.commands().spawn((
+            Name::new(layer.name.to_string()),
+            Transform::from_xy(layer.x.to_native(), layer.y.to_native()),
+            Visibility::inherited_or_hidden(layer.visible),
+        )).id();
 
-            let is_static = reflect.properties.iter().any(|s| s.represents::<Static>());
+        batch_commands.commands().entity(map_entity).add_child(layer_id);
+        let reflect = hydrated.layers.remove(&layer.id.to_native()).unwrap();
 
-            for component in reflect.properties {
-                layer_entity.insert_reflect(component);
-            }
+        let is_static = reflect.properties.iter().any(|s| s.represents::<Static>());
 
-            match layer.data() {
-                LayerData::FiniteTileLayer(tile_layer) => {
-                    if let Some(collision) = tile_layer.layer_collision.as_ref() {
-                        layer_entity.insert(TileLayerCollision::from(collision));
-                    }
-                    
-                    if let Some(image) = tile_layer.image.as_ref() {
-                        z_index += 1;
-                        layer_entity.insert_loading_asset(
-                            SpriteLoader {
-                                center: [0.0; 2],
-                                z_index,
-                                ignore_draw_offset: false,
-                            },
-                            10,
-                            image.to_string(),
-                        );
+        for component in reflect.properties {
+            batch_commands.commands().entity(layer_id).insert_reflect(component);
+        }
 
-                        if is_static {
-                            continue;
-                        }
-
-                        // let width = tile_layer.width.to_native();
-                        layer_entity.with_children(|c| {
-                            for tile in tile_layer.tiles() {
-                                let Some(tile) = tile else {
-                                    continue;
-                                };
-
-                                // leaving this here for when i need to spawn other things
-                                // let i = i as u32;
-                                // let [x, y] = [i % width, i / width];
-                                // let [x, y] = [x * map_data.tile_width, y * map_data.tile_height];
-
-                                let mut tile_entity = c.spawn((Name::new("Tile"),));
-
-                                let (_, properties) = tile.data();
-                                for property in properties.properties.iter() {
-                                    tile_entity.insert_reflect(property.to_dynamic());
-                                }
-                            }
-                        });
-                    } else {
-                        todo!("implement individual tile drawing")
-                    }
+        match layer.data() {
+            LayerData::FiniteTileLayer(tile_layer) => {
+                if let Some(collision) = tile_layer.layer_collision.as_ref() {
+                    batch_commands.commands().entity(layer_id).insert(TileLayerCollision::from(collision));
                 }
-                LayerData::ObjectLayer { map, data } => {
-                    for obj in data.objects.iter() {
-                        // I could remove the object here,
-                        // but it's all going to be dropped at once later.
-                        let entity = *objects.get(&obj.id.to_native()).unwrap();
-                        layer_entity.add_child(entity);
-                        let mut object = layer_entity.commands_mut().entity(entity);
-
-                        let reflect = hydrated.objects.remove(&obj.id.to_native()).unwrap();
-                        for property in reflect.properties {
-                            object.insert_reflect(property);
-                        }
-
-                        if let &ArchivedObjectShape::Tile(tile) = &obj.shape {
-                            let tileset = &map.tilesets[tile.get_tilemap_idx() as usize];
-                            let path = tileset.data.access().image_path.to_string();
-
-                            z_index += 1;
-                            object.insert_loading_asset(
-                                SpriteTableLoader {
-                                    sprite_loader: SpriteLoader {
-                                        z_index,
-                                        ..SpriteLoader::default()
-                                    },
-                                    index: tile.tile_id as usize,
-                                },
-                                10,
-                                path,
-                            );
-                        }
-                    }
-                }
-                LayerData::ImageLayer(image_layer) => {
+                
+                if let Some(image) = tile_layer.image.as_ref() {
                     z_index += 1;
-                    layer_entity.insert_loading_asset(
+                    batch_commands.commands().entity(layer_id).insert_loading_asset(
                         SpriteLoader {
                             center: [0.0; 2],
                             z_index,
                             ignore_draw_offset: false,
                         },
                         10,
-                        image_layer.source.to_string(),
+                        image.to_string(),
                     );
+
+                    if is_static {
+                        continue;
+                    }
+
+                    // let width = tile_layer.width.to_native();
+                    for tile in tile_layer.tiles() {
+                        let Some(tile) = tile else {
+                            continue;
+                        };
+
+                        // leaving this here for when i need to spawn other things
+                        // let i = i as u32;
+                        // let [x, y] = [i % width, i / width];
+                        // let [x, y] = [x * map_data.tile_width, y * map_data.tile_height];
+
+                        let tile_entity = batch_commands.commands().spawn((Name::new("Tile"),)).id();
+                        batch_commands.commands().entity(layer_id).add_child(tile_entity);
+
+                        let (_, properties) = tile.data();
+                        for property in properties.properties.iter() {
+                            batch_commands.commands().entity(tile_entity).insert_reflect(property.to_dynamic());
+                        }
+                    }
+                } else {
+                    todo!("implement individual tile drawing")
                 }
-                LayerData::InfiniteTileLayer(_) => {todo!("infinite tile layer")}
             }
+            LayerData::ObjectLayer { map, data } => {
+                for obj in data.objects.iter() {
+                    // I could remove the object here,
+                    // but it's all going to be dropped at once later.
+                    let object_entity = *objects.get(&obj.id.to_native()).unwrap();
+                    batch_commands.commands().entity(layer_id).add_child(object_entity);
+                    // let mut object = batch_commands.commands().entity(entity);
+
+                    let reflect = hydrated.objects.remove(&obj.id.to_native()).unwrap();
+                    for property in reflect.properties {
+                        batch_commands.commands().entity(object_entity).insert_reflect(property);
+                    }
+
+                    if let &ArchivedObjectShape::Tile(tile) = &obj.shape {
+                        let tileset = &map.tilesets[tile.get_tilemap_idx() as usize];
+                        let path = tileset.data.access().image_path.to_string();
+
+                        z_index += 1;
+                        batch_commands.commands().entity(object_entity).insert_loading_asset(
+                            SpriteTableLoader {
+                                sprite_loader: SpriteLoader {
+                                    z_index,
+                                    ..SpriteLoader::default()
+                                },
+                                index: tile.tile_id as usize,
+                            },
+                            10,
+                            path,
+                        );
+                    }
+                }
+            }
+            LayerData::ImageLayer(image_layer) => {
+                z_index += 1;
+                batch_commands.commands().entity(layer_id).insert_loading_asset(
+                    SpriteLoader {
+                        center: [0.0; 2],
+                        z_index,
+                        ignore_draw_offset: false,
+                    },
+                    10,
+                    image_layer.source.to_string(),
+                );
+            }
+            LayerData::InfiniteTileLayer(_) => {todo!("infinite tile layer")}
         }
-    });
+    }
 }

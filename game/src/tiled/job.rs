@@ -1,10 +1,13 @@
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 use bevy_app::{App, Plugin, Startup};
 use bevy_ecs::entity::Entities;
-use bevy_ecs::prelude::{Commands, In, ResMut, Resource, World};
+use bevy_ecs::prelude::{Commands, Entity, In, ResMut, Resource, World};
 use bevy_ecs::system::SystemParam;
 use bevy_ecs::world::CommandQueue;
 use bevy_playdate::jobs::{JobsScheduler, WorkResult};
+use diagnostic::dbg;
+use crate::tiled::Loading;
 
 pub struct BatchQueuePlugin;
 
@@ -17,43 +20,52 @@ impl Plugin for BatchQueuePlugin {
 
 #[derive(Resource, Default)]
 pub struct BatchCommandQueue {
-    empty_queues: Vec<CommandQueue>,
-    active_queues: Vec<CommandQueue>,
+    queues: Box<[CommandQueue; BatchCommandQueue::MAX_QUEUES]>,
+    last_used: usize,
+    loading_entity: Option<Entity>,
 }
 
 fn add_job(mut scheduler: ResMut<JobsScheduler>) {
-    let _ = scheduler.add(1000, (), BatchCommandQueue::commands_job_system);
+    let _ = scheduler.add(-100, (), BatchCommandQueue::commands_job_system);
 }
 
 impl BatchCommandQueue {
+    // worst case scenario it will take this many frames to finish
+    const MAX_QUEUES: usize = 24;
+    
     pub fn commands<'w: 'a, 'a>(&'a mut self, entities: &'w Entities) -> Commands<'a, 'a> {
-        let queue = self.empty_queues.pop().unwrap_or_default();
-        self.active_queues.push(queue);
-        let queue = self.active_queues.last_mut().unwrap();
-        Commands::new_from_entities(queue, entities)
+        Commands::new_from_entities(self.next_queue(), entities)
+    }
+    
+    fn next_queue(&mut self) -> &mut CommandQueue {
+        self.last_used += 1;
+        if self.last_used >= Self::MAX_QUEUES {
+            self.last_used = 0;
+        }
+        
+        &mut self.queues[self.last_used]
     }
     
     /// Applies the next command queue (if any), and returns true if there are more commands to process
     #[must_use]
     pub fn apply_next(&mut self, world: &mut World) -> bool {
-        match self.active_queues.pop() {
-            Some(mut queue) => {
-                queue.apply(world);
-                self.empty_queues.push(queue);
-                
-                !self.active_queues.is_empty()
-            }
-            None => false,
-        }
+        let queue = self.next_queue();
+        
+        queue.apply(world);
+        
+        self.queues.iter().any(|b| !b.is_empty())
     }
 }
 
 impl BatchCommandQueue {
     pub fn commands_job_system(In(()): In<()>, world: &mut World) -> WorkResult<(), (), ()> {
         world.resource_scope::<BatchCommandQueue, _>(|world, mut commands| {
+            let loading = *commands.loading_entity.get_or_insert_with(|| world.spawn_empty().id());
             if commands.apply_next(world) {
+                world.entity_mut(loading).insert(Loading);
                 WorkResult::Continue(())
             } else {
+                world.entity_mut(loading).remove::<Loading>();
                 WorkResult::Skip(())
             }
         })
